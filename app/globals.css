@@ -30,6 +30,8 @@
   --border: 216 34% 17%;
   --input: 216 34% 17%;
   --ring: 216 34% 17%;
+
+  --font-inter: 'Inter', sans-serif;
 }
 
 @layer base {
@@ -39,6 +41,8 @@
 }
 
 /* Glassmorphism utils */
-.glass {
-  @apply bg-white/5 backdrop-blur-md border border-white/10;
+@layer utilities {
+  .glass {
+    @apply bg-white/5 backdrop-blur-md border border-white/10;
+  }
 }

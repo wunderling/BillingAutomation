@@ -1,14 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Database } from "@/types/supabase";
 import Link from "next/link";
 import { formatDuration } from "@/lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
 
-// Client-side generic table for MVP speed
 export default function SessionsPage() {
+    return (
+        <div className="max-w-7xl mx-auto px-6 py-12">
+            <Suspense fallback={<div className="p-12 text-center text-gray-500">Loading filters...</div>}>
+                <SessionsContent />
+            </Suspense>
+        </div>
+    );
+}
+
+function SessionsContent() {
     const supabase = createClient();
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -66,7 +75,7 @@ export default function SessionsPage() {
     };
 
     return (
-        <div className="max-w-7xl mx-auto px-6 py-12">
+        <>
             <div className="flex justify-between items-center mb-8">
                 <h1 className="text-3xl font-bold">Sessions</h1>
                 <div className="flex gap-2">
@@ -161,7 +170,7 @@ export default function SessionsPage() {
                     </tbody>
                 </table>
             </div>
-        </div>
+        </>
     );
 }
 
