@@ -74,6 +74,23 @@ function SessionsContent() {
         fetchSessions();
     };
 
+    // Grouping Logic
+    const groupedSessions = sessions.reduce((acc, session) => {
+        const date = new Date(session.start_time);
+        // Get start of week (Sunday)
+        const d = new Date(date);
+        const day = d.getDay();
+        const diff = d.getDate() - day; // adjust when day is sunday
+        const weekStart = new Date(d.setDate(diff));
+        weekStart.setHours(0, 0, 0, 0);
+
+        const key = weekStart.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(session);
+        return acc;
+    }, {} as Record<string, typeof sessions>);
+
     return (
         <>
             <div className="flex justify-between items-center mb-8">
@@ -113,63 +130,69 @@ function SessionsContent() {
                 ))}
             </div>
 
-            <div className="glass rounded-2xl overflow-hidden border border-white/5">
-                <table className="w-full text-left">
-                    <thead className="bg-white/5 text-sm uppercase text-gray-500 font-medium">
-                        <tr>
-                            <th className="p-4 w-12 text-center">
-                                <input type="checkbox" onChange={toggleAll} checked={!loading && sessions.length > 0 && selected.size === sessions.length} className="bg-transparent border-gray-600 rounded" />
-                            </th>
-                            <th className="p-4">Date</th>
-                            <th className="p-4">Title / Student</th>
-                            <th className="p-4">Duration</th>
-                            <th className="p-4">Status</th>
-                            <th className="p-4 text-right">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                        {sessions.map(s => (
-                            <tr key={s.id} className="hover:bg-white/5 transition-colors group">
-                                <td className="p-4 text-center">
-                                    <input type="checkbox" checked={selected.has(s.id)} onChange={() => toggleSelect(s.id)} className="bg-transparent border-gray-600 rounded" />
-                                </td>
-                                <td className="p-4 text-sm text-gray-400 whitespace-nowrap">
-                                    {new Date(s.start_time).toLocaleDateString()}
-                                    <br />
-                                    <span className="text-xs">{new Date(s.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                </td>
-                                <td className="p-4">
-                                    <div className="font-medium text-white">{s.student_name || <span className="text-yellow-500 italic">Unknown</span>}</div>
-                                    <div className="text-xs text-gray-500 line-clamp-1">{s.title_raw}</div>
-                                </td>
-                                <td className="p-4">
-                                    <div className="flex flex-col">
-                                        <span className={`font-mono ${s.duration_minutes_normalized ? 'text-white' : 'text-red-400'}`}>
-                                            {s.duration_minutes_normalized ? formatDuration(s.duration_minutes_normalized) : '---'}
-                                        </span>
-                                        <span className="text-xs text-gray-500">Raw: {s.duration_minutes_raw}m</span>
-                                    </div>
-                                </td>
-                                <td className="p-4">
-                                    <Badge status={s.status} />
-                                </td>
-                                <td className="p-4 text-right">
-                                    <Link href={`/session/${s.id}`} className="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-sm transition-colors text-white">
-                                        Details
-                                    </Link>
-                                </td>
-                            </tr>
-                        ))}
-                        {!loading && sessions.length === 0 && (
-                            <tr>
-                                <td colSpan={6} className="p-12 text-center text-gray-500">
-                                    No sessions found.
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
+            {loading && <div className="text-center p-12 text-gray-500">Loading sessions...</div>}
+
+            {!loading && Object.entries(groupedSessions).map(([week, groupSessions]) => (
+                <div key={week} className="mb-8">
+                    <h3 className="text-lg font-semibold text-gray-400 mb-3 px-1">Week of {week}</h3>
+                    <div className="glass rounded-2xl overflow-hidden border border-white/5">
+                        <table className="w-full text-left">
+                            <thead className="bg-white/5 text-sm uppercase text-gray-500 font-medium">
+                                <tr>
+                                    <th className="p-4 w-12 text-center">
+                                        {/* Simple check all for this group? Or global? Keeping global for now implies complexity. Let's make toggleAll select ALL not just group. */}
+                                    </th>
+                                    <th className="p-4">Date</th>
+                                    <th className="p-4">Title / Student</th>
+                                    <th className="p-4">Duration</th>
+                                    <th className="p-4">Status</th>
+                                    <th className="p-4 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/5">
+                                {groupSessions.map(s => (
+                                    <tr key={s.id} className="hover:bg-white/5 transition-colors group">
+                                        <td className="p-4 text-center">
+                                            <input type="checkbox" checked={selected.has(s.id)} onChange={() => toggleSelect(s.id)} className="bg-transparent border-gray-600 rounded" />
+                                        </td>
+                                        <td className="p-4 text-sm text-gray-400 whitespace-nowrap">
+                                            {new Date(s.start_time).toLocaleDateString()}
+                                            <br />
+                                            <span className="text-xs">{new Date(s.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                        </td>
+                                        <td className="p-4">
+                                            <div className="font-medium text-white">{s.student_name || <span className="text-yellow-500 italic">Unknown</span>}</div>
+                                            <div className="text-xs text-gray-500 line-clamp-1">{s.title_raw}</div>
+                                        </td>
+                                        <td className="p-4">
+                                            <div className="flex flex-col">
+                                                <span className={`font-mono ${s.duration_minutes_normalized ? 'text-white' : 'text-red-400'}`}>
+                                                    {s.duration_minutes_normalized ? formatDuration(s.duration_minutes_normalized) : '---'}
+                                                </span>
+                                                <span className="text-xs text-gray-500">Raw: {s.duration_minutes_raw}m</span>
+                                            </div>
+                                        </td>
+                                        <td className="p-4">
+                                            <Badge status={s.status} />
+                                        </td>
+                                        <td className="p-4 text-right">
+                                            <Link href={`/session/${s.id}`} className="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-sm transition-colors text-white">
+                                                Details
+                                            </Link>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            ))}
+
+            {!loading && sessions.length === 0 && (
+                <div className="p-12 text-center text-gray-500 glass rounded-2xl">
+                    No sessions found.
+                </div>
+            )}
         </>
     );
 }

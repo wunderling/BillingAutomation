@@ -9,10 +9,16 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
     const secret = req.headers.get("x-ingest-secret");
     if (secret !== process.env.INGEST_SECRET) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await req.json();
+    let body;
+    try {
+        body = await req.json();
+    } catch (e) {
+        return NextResponse.json({ success: false, error: "Invalid JSON" }, { status: 400 });
+    }
+
     const {
         google_event_id,
         google_calendar_id,
@@ -24,8 +30,9 @@ export async function POST(req: NextRequest) {
         source_url,
     } = body;
 
+    // Validate Required
     if (!google_event_id || !title || !start_time || !end_time) {
-        return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+        return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 });
     }
 
     const supabase = createClient();
@@ -38,18 +45,34 @@ export async function POST(req: NextRequest) {
 
     if (settingsError || !settings) {
         console.error("Settings error:", settingsError);
-        return NextResponse.json({ error: "Settings not found" }, { status: 500 });
+        return NextResponse.json({ success: false, error: "Settings not found" }, { status: 500 });
     }
 
     // 2. Keyword Filter
     const keywords = [settings.keyword_1, settings.keyword_2].filter(Boolean) as string[];
+    // Return 200 with success=true even if ignored? User req says "200 OK with success message".
+    // I'll return success=true but note it was ignored.
     if (!shouldIngestEvent(title, description, keywords)) {
-        return NextResponse.json({ ignored: true, reason: "No matching keywords" });
+        return NextResponse.json({ success: true, message: "Ignored: No matching keywords", ignored: true });
     }
 
-    // 3. Normalize Duration
+    // 3. Logic: Dates & Duration
+    const start = new Date(start_time);
+    const end = new Date(end_time);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        return NextResponse.json({ success: false, error: "Invalid date format" }, { status: 400 });
+    }
+
+    let duration = Number(duration_minutes);
+    if (!duration || isNaN(duration) || duration === 0) {
+        const diffMs = end.getTime() - start.getTime();
+        duration = Math.round(diffMs / 1000 / 60);
+    }
+
+    // 4. Normalize
     const { normalized, serviceCode, qboItemId } = normalizeDuration(
-        Number(duration_minutes),
+        duration,
         {
             qbo_item_id_50: settings.qbo_item_id_50,
             qbo_item_id_90: settings.qbo_item_id_90,
@@ -61,11 +84,10 @@ export async function POST(req: NextRequest) {
         status = 'needs_review_duration';
     }
 
-    // 4. Parse Student Name
+    // 5. Parse Student Name
     const studentName = parseStudentName(title, keywords);
 
-    // 5. Upsert
-    // Check if exists
+    // 6. Upsert
     const { data: existing } = await supabase
         .from("sessions")
         .select("*")
@@ -74,9 +96,9 @@ export async function POST(req: NextRequest) {
 
     if (existing?.status === "posted_to_qbo") {
         return NextResponse.json({
-            ok: true,
-            updated: false,
-            reason: "Already posted to QBO",
+            success: true,
+            message: "Session already posted to QBO. Skipped update.",
+            session_id: existing.id
         });
     }
 
@@ -86,43 +108,44 @@ export async function POST(req: NextRequest) {
         title_raw: title,
         description_raw: description,
         student_name: studentName,
-        start_time,
-        end_time,
-        duration_minutes_raw: Number(duration_minutes),
+        start_time: start.toISOString(),
+        end_time: end.toISOString(),
+        duration_minutes_raw: duration,
         duration_minutes_normalized: normalized,
         service_code: serviceCode,
         qbo_item_id: qboItemId,
-        status: existing ? existing.status : status, // keep existing status if valid? OR reset? User asked to "update fields but DO NOT overwrite if status already posted_to_qbo"
-        // logic: "if exists: update fields". Usually we might want to re-eval status if duration changed?
-        // Let's adopt a safe approach: update critical fields. If it was 'needs_review_duration' and now valid, good.
-        // If it was 'approved', maybe we shouldn't revert to 'pending_review' unless substantial change?
-        // For MVp, let's just reset status if it hasn't been posted.
         updated_at: new Date().toISOString(),
         source: 'zapier'
     };
 
-    // If we are updating, and the existing status is NOT pending/error/needs_review, we should probably be careful. 
-    // But requirement says: "if exists: update fields but DO NOT overwrite if status already posted_to_qbo"
-    // It doesn't explicitly say "preserve approval". Safest is to reset to computed status to ensure correctness of billing.
+    if (source_url) {
+        payload.notes = payload.notes ? `${payload.notes}\n${source_url}` : source_url;
+    }
+
     if (existing) {
         if (existing.status !== 'posted_to_qbo') {
-            payload.status = status; // Reset status based on new data
+            payload.status = status;
         } else {
-            // Should not happen due to check above, but for types sake
             delete payload.status;
         }
     } else {
         payload.status = status;
     }
 
-    const { error: upsertError } = await supabase
+    const { data: upserted, error: upsertError } = await supabase
         .from("sessions")
-        .upsert(payload, { onConflict: 'google_event_id' });
+        .upsert(payload, { onConflict: 'google_event_id' })
+        .select()
+        .single();
 
     if (upsertError) {
         console.error("Upsert error:", upsertError);
-        return NextResponse.json({ error: "Database error" }, { status: 500 });
+        return NextResponse.json({ success: false, error: "Database error: " + upsertError.message }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true, created: !existing, status });
+    return NextResponse.json({
+        success: true,
+        message: existing ? "Session updated" : "Session ingested successfully",
+        session_id: upserted.id
+    });
 }
