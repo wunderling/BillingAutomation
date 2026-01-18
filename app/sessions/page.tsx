@@ -121,8 +121,8 @@ function SessionsContent() {
                         key={opt.id}
                         onClick={() => { setFilterStatus(opt.id); router.push(`/sessions?status=${opt.id}`); }}
                         className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${filterStatus === opt.id
-                                ? "bg-white text-black"
-                                : "bg-white/5 text-gray-400 hover:bg-white/10"
+                            ? "bg-white text-black"
+                            : "bg-white/5 text-gray-400 hover:bg-white/10"
                             }`}
                     >
                         {opt.label}

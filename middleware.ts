@@ -64,6 +64,13 @@ export async function middleware(request: NextRequest) {
 
     // Public paths
     if (path === "/login" || path.startsWith("/api/ingest") || path.startsWith("/api/auth")) {
+        // If user is already logged in and authorized, redirect to dashboard
+        if (path === "/login" && user) {
+            const adminEmail = process.env.ADMIN_EMAIL;
+            if (!adminEmail || user.email === adminEmail) {
+                return NextResponse.redirect(new URL("/dashboard", request.url));
+            }
+        }
         return response;
     }
 
