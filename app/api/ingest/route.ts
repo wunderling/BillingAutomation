@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/client";
-import { normalizeDuration, parseStudentName, shouldIngestEvent } from "@/lib/billing-logic";
+import { createClient } from "@supabase/supabase-js";
+import { normalizeDuration, parseStudentName } from "@/lib/billing-logic";
 import { Database } from "@/types/supabase";
 
 // Force dynamic to prevent caching of the webhook endpoint
@@ -35,28 +35,26 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 });
     }
 
-    const supabase = createClient();
+    const supabase = createClient<Database>(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
 
     // 1. Load Settings
-    const { data: settings, error: settingsError } = await supabase
+    const { data: settingsData, error: settingsError } = await supabase
         .from("settings")
         .select("*")
         .single();
+
+    // Explicit cast or check
+    const settings = settingsData as Database['public']['Tables']['settings']['Row'] | null;
 
     if (settingsError || !settings) {
         console.error("Settings error:", settingsError);
         return NextResponse.json({ success: false, error: "Settings not found" }, { status: 500 });
     }
 
-    // 2. Keyword Filter
-    const keywords = [settings.keyword_1, settings.keyword_2].filter(Boolean) as string[];
-    // Return 200 with success=true even if ignored? User req says "200 OK with success message".
-    // I'll return success=true but note it was ignored.
-    if (!shouldIngestEvent(title, description, keywords)) {
-        return NextResponse.json({ success: true, message: "Ignored: No matching keywords", ignored: true });
-    }
-
-    // 3. Logic: Dates & Duration
+    // 2. Logic: Dates & Duration
     const start = new Date(start_time);
     const end = new Date(end_time);
 
@@ -70,7 +68,7 @@ export async function POST(req: NextRequest) {
         duration = Math.round(diffMs / 1000 / 60);
     }
 
-    // 4. Normalize
+    // 3. Normalize
     const { normalized, serviceCode, qboItemId } = normalizeDuration(
         duration,
         {
@@ -79,20 +77,42 @@ export async function POST(req: NextRequest) {
         }
     );
 
+    // 4. Parse Student Name (Event Title is Student Name)
+    const studentName = parseStudentName(title);
+
+    // 5. Lookup Customer Alias
+    const { data: aliasData } = await supabase
+        .from("customer_aliases")
+        .select("*")
+        .eq("alias", studentName)
+        .single();
+
+    const alias = aliasData as Database['public']['Tables']['customer_aliases']['Row'] | null;
+
     let status: Database['public']['Tables']['sessions']['Row']['status'] = 'pending_review';
-    if (!normalized) {
-        status = 'needs_review_duration';
+    let qboCustomerId: string | null = null;
+    let qboCustomerName: string | null = null;
+
+    if (alias) {
+        qboCustomerId = alias.qbo_customer_id;
+        qboCustomerName = alias.qbo_customer_name;
+
+        if (!normalized) {
+            status = 'needs_review_duration';
+        }
+    } else {
+        status = 'unmatched_customer';
     }
 
-    // 5. Parse Student Name
-    const studentName = parseStudentName(title, keywords);
-
     // 6. Upsert
-    const { data: existing } = await supabase
+    const { data: existingData } = await supabase
         .from("sessions")
         .select("*")
         .eq("google_event_id", google_event_id)
         .single();
+
+    const existing = existingData as Database['public']['Tables']['sessions']['Row'] | null;
+
 
     if (existing?.status === "posted_to_qbo") {
         return NextResponse.json({
@@ -108,6 +128,8 @@ export async function POST(req: NextRequest) {
         title_raw: title,
         description_raw: description,
         student_name: studentName,
+        qbo_customer_id: qboCustomerId,
+        qbo_customer_name: qboCustomerName,
         start_time: start.toISOString(),
         end_time: end.toISOString(),
         duration_minutes_raw: duration,
@@ -122,30 +144,44 @@ export async function POST(req: NextRequest) {
         payload.notes = payload.notes ? `${payload.notes}\n${source_url}` : source_url;
     }
 
+    // Preserve existing status if not posted and logic dictates a change, 
+    // BUT we want to update if it was previously unmatched and now matched, or vice versa.
+    // For simplicity, we overwrite status unless it was manually approved/posted.
     if (existing) {
-        if (existing.status !== 'posted_to_qbo') {
+        if ((existing.status as string) !== 'posted_to_qbo' && (existing.status as string) !== 'approved') {
             payload.status = status;
         } else {
+            // If approved/posted, don't revert status, but DO update other fields? 
+            // Usually if approved, we stop touching it. 
+            // Use safe approach: only update status if it's currently in a flexible state.
             delete payload.status;
+        }
+
+        // If we found a match now, enforce it
+        if (alias && existing.status === 'unmatched_customer') {
+            payload.status = status;
         }
     } else {
         payload.status = status;
     }
 
-    const { data: upserted, error: upsertError } = await supabase
+    const { data: upsertedData, error: upsertError } = await supabase
         .from("sessions")
         .upsert(payload, { onConflict: 'google_event_id' })
         .select()
         .single();
 
-    if (upsertError) {
+    const upserted = upsertedData as Database['public']['Tables']['sessions']['Row'] | null;
+
+    if (upsertError || !upserted) {
         console.error("Upsert error:", upsertError);
-        return NextResponse.json({ success: false, error: "Database error: " + upsertError.message }, { status: 500 });
+        return NextResponse.json({ success: false, error: "Database error: " + (upsertError?.message || "Unknown") }, { status: 500 });
     }
 
     return NextResponse.json({
         success: true,
         message: existing ? "Session updated" : "Session ingested successfully",
-        session_id: upserted.id
+        session_id: upserted.id,
+        status: payload.status || existing?.status
     });
 }

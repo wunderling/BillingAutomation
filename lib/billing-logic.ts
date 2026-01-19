@@ -24,27 +24,14 @@ export function normalizeDuration(
     return { normalized: null, serviceCode: null, qboItemId: null };
 }
 
-export function shouldIngestEvent(
-    title: string,
-    description: string | null,
-    keywords: string[]
-): boolean {
-    const textToCheck = ((title || "") + " " + (description || "")).toLowerCase();
-    return keywords.some((kw) => textToCheck.includes(kw.toLowerCase()));
-}
+// Removed shouldIngestEvent as all events are now ingested.
 
-export function parseStudentName(title: string, keywords: string[]): string {
+export function parseStudentName(title: string): string {
     let name = title;
 
-    // Remove keywords (case insensitive)
-    keywords.forEach(kw => {
-        const regex = new RegExp(kw, 'gi');
-        name = name.replace(regex, '');
-    });
-
-    // Remove separators like "-" or ":"
+    // Remove separators like "-" or ":" and replace with space
     name = name.replace(/[-:]/g, ' ');
 
-    // Trim whitespace
+    // Trim extra whitespace
     return name.replace(/\s+/g, ' ').trim();
 }

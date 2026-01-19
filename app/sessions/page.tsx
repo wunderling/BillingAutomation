@@ -7,6 +7,8 @@ import Link from "next/link";
 import { formatDuration } from "@/lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
 
+import { ConfirmationModal } from "@/components/ConfirmationModal";
+
 export default function SessionsPage() {
     return (
         <div className="max-w-7xl mx-auto px-6 py-12">
@@ -26,6 +28,13 @@ function SessionsContent() {
     const [loading, setLoading] = useState(true);
     const [filterStatus, setFilterStatus] = useState(searchParams.get("status") || "all");
     const [selected, setSelected] = useState<Set<string>>(new Set());
+
+    // Modal State
+    const [modal, setModal] = useState<{ isOpen: boolean; action: 'approve' | 'reject' | null }>({
+        isOpen: false,
+        action: null
+    });
+    const [actionLoading, setActionLoading] = useState<string | null>(null);
 
     useEffect(() => {
         fetchSessions();
@@ -60,24 +69,39 @@ function SessionsContent() {
         else setSelected(new Set(sessions.map(s => s.id)));
     }
 
-    const bulkAction = async (action: 'approve' | 'reject') => {
-        if (!confirm(`Are you sure you want to ${action} ${selected.size} items?`)) return;
+    // Trigger Modal
+    const requestBulkAction = (action: 'approve' | 'reject') => {
+        if (selected.size === 0) return;
+        setModal({ isOpen: true, action });
+    };
 
-        // Parallel requests
+    // Execute Bulk Action
+    const executeBulkAction = async () => {
+        if (!modal.action) return;
+
+        // Optimistic UI could go here, but for safety we await
         const promises = Array.from(selected).map(id =>
-            fetch(`/api/sessions/${id}/${action}`, { method: 'POST' })
+            fetch(`/api/sessions/${id}/${modal.action}`, { method: 'POST' })
         );
 
         await Promise.all(promises);
 
+        setModal({ isOpen: false, action: null });
         setSelected(new Set());
         fetchSessions();
+    };
+
+    // Single Row Action
+    const handleSingleAction = async (id: string, action: 'approve' | 'reject') => {
+        setActionLoading(id);
+        await fetch(`/api/sessions/${id}/${action}`, { method: 'POST' });
+        await fetchSessions();
+        setActionLoading(null);
     };
 
     // Grouping Logic
     const groupedSessions = sessions.reduce((acc, session) => {
         const date = new Date(session.start_time);
-        // Get start of week (Sunday)
         const d = new Date(date);
         const day = d.getDay();
         const diff = d.getDate() - day; // adjust when day is sunday
@@ -93,16 +117,32 @@ function SessionsContent() {
 
     return (
         <>
+            <ConfirmationModal
+                isOpen={modal.isOpen}
+                title={modal.action === 'approve' ? "Accept All Selected?" : "Decline All Selected?"}
+                message={`Are you sure you want to ${modal.action === 'approve' ? "approve" : "reject"} ${selected.size} session${selected.size === 1 ? '' : 's'}? This action cannot be easily undone.`}
+                confirmLabel={modal.action === 'approve' ? "Yes, Accept All" : "Yes, Decline All"}
+                isDestructive={modal.action === 'reject'}
+                onConfirm={executeBulkAction}
+                onCancel={() => setModal({ ...modal, isOpen: false })}
+            />
+
             <div className="flex justify-between items-center mb-8">
                 <h1 className="text-3xl font-bold">Sessions</h1>
                 <div className="flex gap-2">
                     {selected.size > 0 && (
                         <>
-                            <button onClick={() => bulkAction('approve')} className="px-4 py-2 bg-green-600/20 text-green-400 rounded-lg hover:bg-green-600/30">
-                                Approve ({selected.size})
+                            <button
+                                onClick={() => requestBulkAction('approve')}
+                                className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors shadow-lg shadow-green-900/20"
+                            >
+                                Accept All ({selected.size})
                             </button>
-                            <button onClick={() => bulkAction('reject')} className="px-4 py-2 bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600/30">
-                                Reject ({selected.size})
+                            <button
+                                onClick={() => requestBulkAction('reject')}
+                                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors shadow-lg shadow-red-900/20"
+                            >
+                                Decline All ({selected.size})
                             </button>
                         </>
                     )}
@@ -140,25 +180,23 @@ function SessionsContent() {
                             <thead className="bg-white/5 text-sm uppercase text-gray-500 font-medium">
                                 <tr>
                                     <th className="p-4 w-12 text-center">
-                                        {/* Simple check all for this group? Or global? Keeping global for now implies complexity. Let's make toggleAll select ALL not just group. */}
+                                        {/* Optional global toggle in header if needed */}
                                     </th>
                                     <th className="p-4">Date</th>
                                     <th className="p-4">Title / Student</th>
                                     <th className="p-4">Duration</th>
                                     <th className="p-4">Status</th>
-                                    <th className="p-4 text-right">Action</th>
+                                    <th className="p-4 text-center">Action</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5">
                                 {groupSessions.map(s => (
                                     <tr key={s.id} className="hover:bg-white/5 transition-colors group">
                                         <td className="p-4 text-center">
-                                            <input type="checkbox" checked={selected.has(s.id)} onChange={() => toggleSelect(s.id)} className="bg-transparent border-gray-600 rounded" />
+                                            <input type="checkbox" checked={selected.has(s.id)} onChange={() => toggleSelect(s.id)} className="bg-transparent border-gray-600 rounded w-4 h-4 cursor-pointer" />
                                         </td>
                                         <td className="p-4 text-sm text-gray-400 whitespace-nowrap">
-                                            {new Date(s.start_time).toLocaleDateString()}
-                                            <br />
-                                            <span className="text-xs">{new Date(s.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                            {new Date(s.start_time).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })}
                                         </td>
                                         <td className="p-4">
                                             <div className="font-medium text-white">{s.student_name || <span className="text-yellow-500 italic">Unknown</span>}</div>
@@ -175,10 +213,30 @@ function SessionsContent() {
                                         <td className="p-4">
                                             <Badge status={s.status} />
                                         </td>
-                                        <td className="p-4 text-right">
-                                            <Link href={`/session/${s.id}`} className="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-sm transition-colors text-white">
-                                                Details
-                                            </Link>
+                                        <td className="p-4 text-center">
+                                            <div className="flex justify-center gap-2">
+                                                <button
+                                                    onClick={() => handleSingleAction(s.id, 'approve')}
+                                                    disabled={!!actionLoading}
+                                                    className={`px-3 py-1.5 rounded-lg text-sm transition-colors border ${actionLoading === s.id ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-500/20'
+                                                        } bg-green-500/10 text-green-400 border-green-500/20`}
+                                                    title="Approve"
+                                                >
+                                                    {actionLoading === s.id ? '...' : 'Approve'}
+                                                </button>
+                                                <button
+                                                    onClick={() => handleSingleAction(s.id, 'reject')}
+                                                    disabled={!!actionLoading}
+                                                    className={`px-3 py-1.5 rounded-lg text-sm transition-colors border ${actionLoading === s.id ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-500/20'
+                                                        } bg-red-500/10 text-red-400 border-red-500/20`}
+                                                    title="Reject"
+                                                >
+                                                    {actionLoading === s.id ? '...' : 'Reject'}
+                                                </button>
+                                                <Link href={`/session/${s.id}`} className="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-sm transition-colors text-white">
+                                                    Details
+                                                </Link>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
