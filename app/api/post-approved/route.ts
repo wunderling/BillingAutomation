@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@supabase/supabase-js";
 import { QBOClient } from "@/lib/qbo";
 import { Database } from "@/types/supabase";
 
@@ -12,7 +12,11 @@ export async function POST(req: NextRequest) {
     // Auth Check: Admin only or Cron secret (optional)
     // For MVP, assuming Admin session.
 
-    const supabase = createClient();
+    // Use Service Role for access to Tokens and robust updates
+    const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
     const qbo = new QBOClient();
 
     // 1. Get Tokens
@@ -39,29 +43,20 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ message: "No approved sessions to post", dryRun, results: [] });
     }
 
-    // 4. Processing
+    // 4. Processing - Group by Client
     const results = [];
+    const groups: Record<string, { customerName: string, sessions: typeof sessions }> = {};
 
     for (const session of sessions) {
-        const result: any = {
-            sessionId: session.id,
-            student: session.student_name,
-            title: session.title_raw,
-            duration: session.duration_minutes_normalized,
-            success: false,
-            message: "",
-        };
+        let customerId = session.qbo_customer_id;
+        let customerName = session.qbo_customer_name;
 
-        try {
-            // 4a. Resolve Customer
+        if (!customerId) {
             // Check aliases
-            let customerId = null;
-            let customerName = null;
-
             const { data: alias } = await supabase
                 .from('customer_aliases')
                 .select('*')
-                .eq('alias', session.student_name || session.title_raw) // Fallback to title if name empty
+                .eq('alias', session.student_name || session.title_raw)
                 .single();
 
             if (alias) {
@@ -75,47 +70,53 @@ export async function POST(req: NextRequest) {
                     customerName = found.DisplayName;
                 }
             }
+        }
 
-            if (!customerId) {
-                // Mark as unmatched
-                if (!dryRun) {
-                    await supabase.from('sessions').update({ status: 'unmatched_customer' }).eq('id', session.id);
-                }
-                result.message = "Customer not found";
-                results.push(result);
-                continue;
+        if (!customerId) {
+            if (!dryRun) {
+                await supabase.from('sessions').update({ status: 'unmatched_client' }).eq('id', session.id);
             }
+            results.push({
+                sessionId: session.id,
+                client: "Unresolved",
+                title: session.title_raw,
+                duration: session.duration_minutes_normalized,
+                success: false,
+                message: "Customer not found",
+            });
+            continue;
+        }
 
-            // 4b. Create Delayed Charge
+        if (!groups[customerId]) {
+            groups[customerId] = { customerName: customerName!, sessions: [] };
+        }
+        groups[customerId].sessions.push(session);
+    }
+
+    // 5. Create Batched Delayed Charges
+    for (const [customerId, group] of Object.entries(groups)) {
+        try {
             if (dryRun) {
-                result.success = true;
-                result.message = `Would post to Customer: ${customerName}`;
-                result.customerId = customerId;
+                results.push({
+                    client: group.customerName,
+                    success: true,
+                    message: `Would post batch of ${group.sessions.length} sessions to ${group.customerName}`,
+                    duration: group.sessions.reduce((acc, s) => acc + (s.duration_minutes_normalized || 0), 0)
+                });
             } else {
-                // Create in QBO
-                // POST /v3/company/:id/delayedcharge
+                // Create multi-line payload
                 const payload = {
                     "CustomerRef": { "value": customerId },
-                    "TxnDate": session.start_time.split('T')[0], // YYYY-MM-DD
-                    "Line": [
-                        {
-                            "Description": `${session.title_raw} (GoogleEventID:${session.google_event_id})`,
-                            "Amount": 0, // Delayed Charge usually just tracks quantity/hours, rate comes from Item?
-                            // Wait, QBO Delayed Charge needs:
-                            // DetailType: SalesItemLineDetail
-                            // SalesItemLineDetail: { ItemRef: { value: qbo_item_id }, Qty: 1 } 
-                            // For services, if it's hourly, we might pass Qty? 
-                            // Normalized 50/90 are "Service Codes". Assuming they are mapped to Items that are flat fee (or hourly?).
-                            // Requirement says: "service_code text null // "SESSION_50" | "SESSION_90"".
-                            // "qbo_item_id" from settings.
-                            "DetailType": "SalesItemLineDetail",
-                            "SalesItemLineDetail": {
-                                "ItemRef": { "value": session.qbo_item_id },
-                                // Qty: 1? or duration? Usually flat fee items per session implies Qty 1.
-                                "Qty": 1
-                            }
+                    "TxnDate": new Date().toISOString().split('T')[0],
+                    "Line": group.sessions.map(s => ({
+                        "Description": `${s.title_raw} (${new Date(s.start_time).toLocaleDateString()})`,
+                        "Amount": 0,
+                        "DetailType": "SalesItemLineDetail",
+                        "SalesItemLineDetail": {
+                            "ItemRef": { "value": s.qbo_item_id },
+                            "Qty": 1
                         }
-                    ]
+                    }))
                 };
 
                 const qboRes = await qbo.makeApiCall(accessToken, tokens.realm_id!, 'delayedcharge', 'POST', payload);
@@ -126,27 +127,31 @@ export async function POST(req: NextRequest) {
 
                 const newId = qboRes.DelayedCharge.Id;
 
-                // Update Session
+                // Update all sessions in group
+                const sessionIds = group.sessions.map(s => s.id);
                 await supabase.from('sessions').update({
                     status: 'posted_to_qbo',
                     qbo_customer_id: customerId,
-                    qbo_customer_name: customerName,
+                    qbo_customer_name: group.customerName,
                     qbo_delayed_charge_id: newId,
                     updated_at: new Date().toISOString()
-                }).eq('id', session.id);
+                }).in('id', sessionIds);
 
-                result.success = true;
-                result.message = `Posted successfully (ID: ${newId})`;
+                results.push({
+                    client: group.customerName,
+                    success: true,
+                    message: `Posted batch of ${group.sessions.length} sessions (ID: ${newId})`,
+                    duration: group.sessions.reduce((acc, s) => acc + (s.duration_minutes_normalized || 0), 0)
+                });
             }
-
         } catch (e: any) {
-            result.message = e.message;
-            if (!dryRun) {
-                // log error? status='error'?
-            }
+            results.push({
+                client: group.customerName,
+                success: false,
+                message: e.message,
+                duration: group.sessions.reduce((acc, s) => acc + (s.duration_minutes_normalized || 0), 0)
+            });
         }
-
-        results.push(result);
     }
 
     // Log Run

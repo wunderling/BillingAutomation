@@ -9,6 +9,20 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 
+// TODO: Replace with real clients from Supabase in the future
+const MOCK_CLIENTS = [
+    "Alpha Corp",
+    "Beta Ltd",
+    "Gamma Inc",
+    "Delta LLC",
+    "Epsilon Co",
+    "Zeta Industries",
+    "Eta Solutions",
+    "Theta Group",
+    "Iota Ventures",
+    "Kappa Partners"
+];
+
 export default function SessionsPage() {
     return (
         <div className="max-w-7xl mx-auto px-6 py-12">
@@ -46,7 +60,7 @@ function SessionsContent() {
 
         if (filterStatus !== 'all') {
             if (filterStatus === 'needs_attention') {
-                query = query.in('status', ['needs_review_duration', 'unmatched_customer', 'error']);
+                query = query.in('status', ['needs_review_duration', 'unmatched_client', 'error']);
             } else {
                 query = query.eq('status', filterStatus);
             }
@@ -186,6 +200,7 @@ function SessionsContent() {
                                     <th className="p-4">Title / Student</th>
                                     <th className="p-4">Duration</th>
                                     <th className="p-4">Status</th>
+                                    <th className="p-4">Client</th>
                                     <th className="p-4 text-center">Action</th>
                                 </tr>
                             </thead>
@@ -212,6 +227,20 @@ function SessionsContent() {
                                         </td>
                                         <td className="p-4">
                                             <Badge status={s.status} />
+                                        </td>
+                                        <td className="p-4">
+                                            <select
+                                                className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-gray-300 w-full hover:bg-white/10 transition-colors focus:ring-2 focus:ring-purple-500/50 outline-none"
+                                                defaultValue=""
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <option value="" disabled>Select Client</option>
+                                                {MOCK_CLIENTS.map(client => (
+                                                    <option key={client} value={client} className="bg-gray-900 text-gray-300">
+                                                        {client}
+                                                    </option>
+                                                ))}
+                                            </select>
                                         </td>
                                         <td className="p-4 text-center">
                                             <div className="flex justify-center gap-2">
@@ -262,12 +291,17 @@ function Badge({ status }: { status: string }) {
         rejected: "bg-red-500/20 text-red-400",
         posted_to_qbo: "bg-purple-500/20 text-purple-400",
         needs_review_duration: "bg-yellow-500/20 text-yellow-400",
+        unmatched_client: "bg-orange-500/20 text-orange-400",
         unmatched_customer: "bg-orange-500/20 text-orange-400",
         error: "bg-red-500/20 text-red-500",
     };
+
+    let displayStatus = status.replace(/_/g, " ");
+    if (status === 'unmatched_customer') displayStatus = 'unmatched client';
+
     return (
         <span className={`inline-flex px-2.5 py-1 text-xs font-medium rounded-full ${colors[status] || "bg-gray-500/20 text-gray-400"}`}>
-            {status.replace(/_/g, " ")}
+            {displayStatus}
         </span>
     );
 }

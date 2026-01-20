@@ -22,7 +22,7 @@ export interface Database {
                     duration_minutes_raw: number
                     duration_minutes_normalized: number | null
                     service_code: 'SESSION_50' | 'SESSION_90' | null
-                    status: 'pending_review' | 'approved' | 'rejected' | 'needs_review_duration' | 'unmatched_customer' | 'posted_to_qbo' | 'error'
+                    status: 'pending_review' | 'approved' | 'rejected' | 'needs_review_duration' | 'unmatched_client' | 'posted_to_qbo' | 'error'
                     qbo_customer_id: string | null
                     qbo_customer_name: string | null
                     qbo_item_id: string | null
@@ -44,7 +44,7 @@ export interface Database {
                     duration_minutes_raw: number
                     duration_minutes_normalized?: number | null
                     service_code?: 'SESSION_50' | 'SESSION_90' | null
-                    status?: 'pending_review' | 'approved' | 'rejected' | 'needs_review_duration' | 'unmatched_customer' | 'posted_to_qbo' | 'error'
+                    status?: 'pending_review' | 'approved' | 'rejected' | 'needs_review_duration' | 'unmatched_client' | 'posted_to_qbo' | 'error'
                     qbo_customer_id?: string | null
                     qbo_customer_name?: string | null
                     qbo_item_id?: string | null

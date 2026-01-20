@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
             status = 'needs_review_duration';
         }
     } else {
-        status = 'unmatched_customer';
+        status = 'unmatched_client';
     }
 
     // 6. Upsert
@@ -158,7 +158,7 @@ export async function POST(req: NextRequest) {
         }
 
         // If we found a match now, enforce it
-        if (alias && existing.status === 'unmatched_customer') {
+        if (alias && existing.status === 'unmatched_client') {
             payload.status = status;
         }
     } else {
