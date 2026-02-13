@@ -80,23 +80,22 @@ export async function POST(req: NextRequest) {
     // 4. Parse Student Name (Event Title is Student Name)
     const studentName = parseStudentName(title);
 
-    // 5. Lookup Customer Alias
-    const { data: aliasData } = await supabase
-        .from("customer_aliases")
+    // 5. Lookup Billing Profile (New Source of Truth)
+    const { data: profile } = await supabase
+        .from("billing_profiles")
         .select("*")
-        .eq("alias", studentName)
+        .eq("student_name", studentName)
         .single();
-
-    const alias = aliasData as Database['public']['Tables']['customer_aliases']['Row'] | null;
 
     let status: Database['public']['Tables']['sessions']['Row']['status'] = 'pending_review';
     let qboCustomerId: string | null = null;
     let qboCustomerName: string | null = null;
 
-    if (alias) {
-        qboCustomerId = alias.qbo_customer_id;
-        qboCustomerName = alias.qbo_customer_name;
+    if (profile) {
+        qboCustomerId = (profile as any).qbo_customer_id;
+        qboCustomerName = (profile as any).qbo_customer_name;
 
+        // Note: normalized status check is still valid if we want to flag unusual durations
         if (!normalized) {
             status = 'needs_review_duration';
         }
@@ -158,7 +157,7 @@ export async function POST(req: NextRequest) {
         }
 
         // If we found a match now, enforce it
-        if (alias && existing.status === 'unmatched_client') {
+        if (profile && existing.status === 'unmatched_client') {
             payload.status = status;
         }
     } else {

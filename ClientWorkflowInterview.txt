@@ -1,0 +1,370 @@
+Speaker 1  0:00  
+Perfect. It's gonna have a transcript now. Okay, so can you sign into your QuickBooks? Yeah, sweet.
+
+Ruthie Wunderling  0:12  
+Okay, I'm signed in. You
+
+Speaker 1  0:14  
+share your screen as well. Okay, so I basically need you to walk me through, like, every single piece of data that you would need to bill a client. So like, let's say you just finished a tutoring session with one client, and you were going to go in and manually create an invoice for them.
+
+Ruthie Wunderling  0:34  
+Okay, so I go into invoice. Okay, I pick the customer. So I'm gonna pick 1111,
+
+Speaker 1  0:43  
+okay, so you're adding a customer in the Add customer box, and so you, let's, let's do a real customer here, not a test customer. So you would pick their name, and is this their parents name?
+
+Ruthie Wunderling  0:57  
+It's the person paying mostly, the student's last name, because sometimes, okay, well, mom will have a different last name than dad, which is why some will have a slash,
+
+Speaker 1  1:07  
+okay, so if I see a journey slash Renard, those are two parents with two different last names, but they're both paying.
+
+Ruthie Wunderling  1:16  
+Yes, sometimes it's just one family paying. Most of the times it's one person paying. It's just that the mom and dad, since they're both the parents, they're the called the payee. So you have to put both parents names on the form, especially if it's being submitted for insurance things.
+
+Speaker 1  1:32  
+Okay, okay, so it's the last name
+
+Ruthie Wunderling  1:35  
+of both of the parents most of the time, it's one last name, right?
+
+Speaker 1  1:40  
+So if it happens to be the last nameable to the parents and the last name is the same, then it just shows one name in QuickBooks, and it's the last
+
+Ruthie Wunderling  1:47  
+moms have kept their professional name because it's their maiden name. So that's why.
+
+Speaker 1  1:52  
+So it's two, so it's either or, and if it's double, then it's just one of them. Okay, so let's pick one at
+
+Ruthie Wunderling  1:57  
+random, Alejandro. This person is no longer the second you click
+
+Speaker 1  2:01  
+Alejandro, it immediately loads, is this the email of one of
+
+Ruthie Wunderling  2:05  
+the parents, the one who pays and wants the bills? Yes. Okay, so it loads
+
+Speaker 1  2:10  
+the email of the parents, and then it already has the address of the parent correct, and it creates an invoice number. It selects terms which are, which is due on receipt. Is that always the term that you
+
+Ruthie Wunderling  2:24  
+it's net 15 for new ones. This is a very old client,
+
+Speaker 1  2:28  
+so you always do net 15 for correct every client move. There's never a case where you do anything else except for net 15 for the billing the invoice terms, yes, okay. So at all times, net 15 is selected. The invoice date is selected as the date that you create the invoice, and the due date is net 15 of the invoice date Correct. Okay. And now we scroll down here and we see that there's client client name and educational therapist, Ruthie Wunderling, is there anything
+
+Ruthie Wunderling  2:56  
+the client name will pop in the client's name. This is just an old client so it hers didn't kind of pop up. Normally, they will instantly pop up.
+
+Speaker 1  3:06  
+Okay, can we pick an active Can we pick an active client to for this example, then we're
+
+Ruthie Wunderling  3:10  
+gonna have to delete because we're literally billing today. So we're not gonna create, we're
+
+Speaker 1  3:14  
+not actually gonna create this invoice. We're just gonna delete it after, let's, let's pick a real client. Okay, did not
+
+Ruthie Wunderling  3:22  
+populate, not pop. It's supposed to Okay.
+
+Speaker 1  3:25  
+So that's huge. So this data either is not in
+
+Ruthie Wunderling  3:29  
+QuickBooks or or it just needs to be fixed.
+
+Speaker 1  3:33  
+Yeah, let's pick another one. Let's see what happens. Okay, so this is why the app isn't this is why the app isn't working. This data just does not either doesn't exist in QuickBooks or it isn't like automatically
+
+Ruthie Wunderling  3:46  
+Tran put those yeah in so the client's name is auto populating. Okay, it
+
+Speaker 1  3:52  
+absolutely has to, otherwise the automated QuickBooks billing will never work. So okay, so let's say we assume that, yeah, one more. Okay, so you know, you have a client that you want to bill. You've got the invoice number, you've got the terms, you've got the invoice date, you've got the address, and you've got the email of, well, let's say it's a case where there's two, two last names. Do you put both of the parents emails or just one of them?
+
+Ruthie Wunderling  4:21  
+It depends what the parents have asked. So most want both parent names, like here. So this has both parents, but it depends, right?
+
+Speaker 1  4:31  
+But you're only sending the invoice to pigs fly.me. At Gmail, so you're only sending it to one email at a time, correct? Okay, so whichever account on QuickBooks is associated with a student on Google meets, there's only one billing email for every account, and therefore there's only one billing email for every student
+
+Ruthie Wunderling  4:53  
+most the time. Some parents have grandparents paying so their parents, it'll be CC, and that's already set up as well. There's only about three.
+
+Speaker 1  5:01  
+Can you show me a client where that is the case? I'd like to see how their invoice is structured.
+
+Ruthie Wunderling  5:07  
+I have to think of one who would have it. CC, I
+
+Ruthie Wunderling  5:17  
+think this one is no, okay, hers is not there is there are a few, because the person paying is not that person. I just don't know, because trans the one who usually sets all this up.
+
+Ruthie Wunderling  5:41  
+And a lot of these are inactive clients, but if we make them and take and
+
+Speaker 1  5:45  
+you pick an active client that that does not the parents do not pay, and their their email
+
+Ruthie Wunderling  5:52  
+is included on the table right there.
+
+Speaker 1  5:56  
+Okay, so in a case, in a case where a student had a session, and they are now being billed for the session, and the students parents are not paying, but let's say the grandparents or someone else is paying, but the parents still want to be they still want to see the invoice and be a part of it. The Email field for the client in QuickBooks shows the email of the parent and of, in this case, the grandparent. So how does QuickBook determine which email is the one that's going to be billed to, or is the email or is the invoice just sent to both emails and whoever pays it doesn't matter. The money came in and you're okay with that, as long as the invoice gets
+
+Ruthie Wunderling  6:40  
+out, one is the primary and the other just says CC, and we've already set it up.
+
+Speaker 1  6:46  
+So the primary here is the first one I would imagine. Correct. 100% sure about that. Sagger hebber,
+
+Ruthie Wunderling  6:55  
+yes, okay, the one who gets the emails
+
+Speaker 1  6:58  
+and then Desi is the parent who just wants to see how much the
+
+Ruthie Wunderling  7:01  
+family Shaylee is his wife, and she gets it as well to make sure that they both are paid. Someone's paid.
+
+Speaker 1  7:07  
+Yes, so who? So, who is sag air? Is that the husband? Yeah, okay, so you have the dad and the mom. Is this like a situation where they're divorced or something, or they just,
+
+Ruthie Wunderling  7:17  
+does it matter? They're not well?
+
+Unknown Speaker  7:21  
+So it was only one the dad pays every time.
+
+Ruthie Wunderling  7:23  
+Most of the time, even if we have a split household, both, only one parent pays, and the other one, like they, they deal with it on their end. So there's only one person paying. It's not as
+
+Speaker 1  7:33  
+Okay, okay, okay, and so what? So what QuickBooks will do? And I don't know, I'm asking, What will QuickBooks do when this invoice is sent out to both of these emails? Let's say that
+
+Ruthie Wunderling  7:47  
+Sagar pays 99% of the time, okay, always pay.
+
+Speaker 1  7:52  
+Let's say Sagar paid 100% of the oh, let's say in the one case where Sagar does not pay, and the in the mom pays, and that money comes into QuickBooks. Is that invoice closed?
+
+Ruthie Wunderling  8:02  
+Yeah, because it still will go under the same account for their name.
+
+Speaker 1  8:06  
+Okay, so QuickBooks does not care who pays all that QuickBook cares about is that money comes in relative to the invoice. Okay, okay, so let's keep scrolling down. Okay, so tags, so what's the whole tag system here? The tags
+
+Ruthie Wunderling  8:23  
+that are hidden do tags. So I would say that's not relevant.
+
+Speaker 1  8:27  
+You never, ever do a tag. Ever. No, because it would be
+
+Ruthie Wunderling  8:30  
+like, if you're a contractor doing house like, oh, that's for the Wunderling House expense, because we're getting piping supplies. This is a bill that we're paying you back for window supplies. So you would tag piping supplies or window supplies, but we don't do that in our business,
+
+Speaker 1  8:46  
+and you never do it in QuickBooks, QuickBooks, and you never expect to add a tag to an invoice ever. Okay, so now we're moving down to the product or service section of the invoice that needs to be completed, and it looks like you clicked the service date correct, which is the same thing. So is the service date the same thing as the date that you send the invoice, or do you actually click the day that the service was
+
+Ruthie Wunderling  9:10  
+done at? It's the day on the calendar that the service was done at. Yes, that has okay.
+
+Speaker 1  9:14  
+That's really important. So the on the Google Calendar, the day that the meeting was held needs to be configured in QuickBooks. QuickBooks under products or services, where the service date is matched to the date of the Google meet on the Google Calendar Correct. Okay. And then the product or service you choose, do you always choose educational therapy?
+
+Ruthie Wunderling  9:37  
+200 No, sometimes it'll be a parent consult, like I'm having in 17 minutes, and it'll say parent consult or school consult.
+
+Unknown Speaker  9:47  
+Okay, and do you say that on your billing?
+
+Ruthie Wunderling  9:50  
+Yes, I do calendar, yeah, it'll say consult on the calendar.
+
+Speaker 1  9:57  
+Okay, how come there's only one option to pick educational therapy?
+
+Ruthie Wunderling  10:00  
+Oh, no, no, there's like a ton. Okay, can you pick another one? I just put the one that said 200 because that's the rate for this individual. Look at all the services.
+
+Unknown Speaker  10:13  
+Okay, do you see? Do you use all of these
+
+Ruthie Wunderling  10:16  
+services only for some kids, right? Each kid, some, I have to put their medical diagnosis in some Okay, so there's buying supplies.
+
+Speaker 1  10:26  
+And do you put all of that in your Google Calendar, or do you just remember that based on your relationship with the client?
+
+Ruthie Wunderling  10:33  
+It depends. It's the relationship with the client and what the client wants on their papers, right? Some want the medical diagnosis because they're submitting to insurance, but some don't want it on, so they only just have the dates of service and the amount, okay?
+
+Speaker 1  10:47  
+And you do that manually based on your memory of the relationship with the client. Or is there anywhere you store? All this information
+
+Ruthie Wunderling  10:53  
+should be stored inside their notes, but the notes are hidden, so they don't matriculate and pop up here. Okay? We would just
+
+Speaker 1  11:01  
+so we would have to create, we would have books. We would have to create a database where we already
+
+Ruthie Wunderling  11:07  
+have that. It's called our cheat sheets, notes, like we have notes already, but it's in a, okay, it's a Google Doc.
+
+Unknown Speaker  11:14  
+Okay, so that's gonna have to be,
+
+Ruthie Wunderling  11:18  
+it's in QuickBooks, but we're the ones, but make sure we have it, because we base it on the previous so
+
+Speaker 1  11:23  
+you're, we're gonna have to, I know we don't have much time, so I'm gonna have to see that, that cheat sheet. We'll have to do that after we finish this, the rest of this invoice thing, and then we'll go over the
+
+Ruthie Wunderling  11:32  
+sheets the previous month's invoice. Okay, here's a template for that kid. It's going to be the next one in the
+
+Unknown Speaker  11:37  
+template. Oh, so you just redo the
+
+Ruthie Wunderling  11:39  
+template per kid, yes,
+
+Unknown Speaker  11:43  
+and it's always the same per kid, right?
+
+Ruthie Wunderling  11:46  
+Because that kid like, let's say they have ADHD dyslexia, dysgraphia, so they're doing all three of those codes. So in their template, they always matriculate and pop up.
+
+Speaker 1  11:57  
+That's probably the best, probably the best way to automate this is for for you and me to sit down and create an invoice template for every single student. Yeah, I agree. And we name a template and we have the AI just build the template relative to the live data that needs to be input into it.
+
+Ruthie Wunderling  12:16  
+QuickBooks already has the templates. We just have to save it for that customer so that it's already saved as
+
+Speaker 1  12:22  
+is, yeah, so, so you're okay. So the rest of the templates need to be built, is what I'm hearing.
+
+Ruthie Wunderling  12:28  
+Well, a lot of them like we can put it so that we can customize this template in QuickBooks. I can customize the whole thing per kid.
+
+Speaker 1  12:36  
+I understand that. But are all of the templates already made, or do you still have to make some of them by hand.
+
+Ruthie Wunderling  12:42  
+I have to see if Tran has it saved as a template for we don't do very many with codes anymore. It's rare, but I think we have, like, four or five with codes. That's it. I would say probably 90% of our other clients don't have a specific template with codes. It's just dates and services with a total that's all we do. Okay?
+
+Speaker 1  13:03  
+So that's definitely an edge case where we need to incorporate some sort of logic where, if a student, we
+
+Ruthie Wunderling  13:09  
+can just turn the template on in quick puts to say, for this student, hebar, this is the template you use for them. We just,
+
+Speaker 1  13:16  
+Okay, I'm, I'm just, yeah, I'm trying to think of the logic that we have to do like so we can. We can basically tell the software to say, okay, ask QuickBooks if this student has a template that's been pre built for them, right? I'm not even sure if we can do that through the QuickBooks API.
+
+Ruthie Wunderling  13:33  
+Actually, we can. We can tell QuickBooks to make a special template, like you might call it the Heber template. And so it's a if it's for, if it's for Heber, use the Heber template. And you can tell that to QuickBooks so it populates it. It just hasn't been done yet. So we just have to make sure, for those few special kids, we just do that.
+
+Unknown Speaker  13:57  
+Okay, I'm just gonna check really quick
+
+Ruthie Wunderling  13:58  
+has it in the notes that are invisible, just in her notes section on the billing side, which is inside QuickBooks. And she just remembers it because it's the same thing they do every month, and she's been working here for over a year, right?
+
+Speaker 1  14:13  
+Okay, so there's actually, there's no way for the API to determine True or False on a template, but what it can do is it can, it can query the recurring transaction endpoint so it can, like, repeat a past transaction. Yeah, because you
+
+Ruthie Wunderling  14:27  
+make custom templates per person per client, so that every time you pull their name up, those codes are always at the bottom. That's easy to do. QuickBooks does that?
+
+Speaker 1  14:42  
+Can you Okay? Can you walk through the rest of the invoice tab so you put the time in there as well, or the quantity,
+
+Ruthie Wunderling  14:52  
+yeah, like quantity one means it's a regular 50 minute session. Now this guy today did a 70 minute session, so what I have to do is divide 70 by 50. Okay.
+
+Speaker 1  15:04  
+So the quantity tab, the quantity tab in the QuickBooks invoice, is prorated, where one quantity equals 50 minutes of service that you're billing for, yeah, and we probate it. And you extrapolate that ratio over any timeframe you can just okay, and the rate. So the rate here, you know, not every I know, not every client has the same rate, even for the same service, correct. So how do you know that? How does Tran know? How does someone who's not you, who doesn't have this stuff memorized, like, how would I know if you just hired me today
+
+Ruthie Wunderling  15:43  
+that is in the Google Doc, which is kind of the cheat sheet, which has the parent names and the kid and their rate, okay?
+
+Speaker 1  15:50  
+So there's a unified Google Doc that has all this data that pairs things together, okay, okay, and then it does that mount calculation on its own, and you do as many of these line items as needed relative to how many individual services were provided. And you do this on a session by session basis. So one student had two sessions in a day. You would do two sessions on the same service. I would do 120
+
+Ruthie Wunderling  16:15  
+minutes per 50 minutes. So it would we would divide total minutes by 50 is prorated for two sessions.
+
+Speaker 1  16:22  
+I understand that part. Okay, so there are seven media. If you met with a student one day for the entire week, you would build them seven service, date line items on this invoice for just a one week invoice, correct. Okay, okay. And then if you go all the way down here and you have add product or service. Do you ever click that button or toggle that?
+
+Ruthie Wunderling  16:43  
+Nope, okay, we could, though, clearly, just added a line and just added, no, let's keep scrolling down. That's it, pretty much.
+
+Speaker 1  16:52  
+So do you ever enter any data into the tell your customer how you want to
+
+Ruthie Wunderling  16:55  
+get paid? Field, it's right here.
+
+Unknown Speaker  16:59  
+That's the note to customer.
+
+Ruthie Wunderling  17:01  
+Oh, at the bottom, we do have a service message that will tell them. Do you see right where it says customer payment options? Yeah, we actually put it as one of these lines. I believe it's one of our codes at the bottom, credit card processing fee. So there's a charge for that, and then there's like, a little spiel that goes with it.
+
+Speaker 1  17:19  
+So at the bottom of every single invoice you put credit card processing fee if they pay by credit card, yeah?
+
+Ruthie Wunderling  17:26  
+And if they do, like, e check, there's like, a little yeah, there's always this, oh, it's actually right here. Actually, Luke, it's right here. It says note to the customer, we appreciate your business. It's actually we moved it here so it goes under the payment option, but it says, we appreciate your business and paying with anything connected with a QuickBooks online convenience processing fee will be attached and build on a separate invoice depending on the payment method. Okay, so
+
+Speaker 1  17:47  
+for every bill you send out, do you charge the same processing fee? Yeah, it's 3% Okay, so with every single invoice, well,
+
+Ruthie Wunderling  17:57  
+no, it's okay. It's 3% if they pay with credit card. If they pay with zeal or ACH, it's free. There's no processing charge, unless their bank charges it, then we just have them pay it back. Well, no, because it charges it to me, and then they have to reimburse me. Sometimes they pay for it, but if I get any fee, I pass it back to the parents, and we've all agreed to that ahead of time. So searching, like, if they use a discover credit card, or sometimes American Express, it's a higher processing fee. So the parent knows it may be more than three, it might be 3.5 and then we just say, this is what we were charged, and they pay it. We just tack it to their next invoice. We call it a credit card processing fee.
+
+Speaker 1  18:37  
+And in a situation where, okay, so let's say someone wants to pay with credit card, someone wants to pay with cell or an ACH wire transfer. How do you know which parent is going to pay with which? Is that part of the cheat sheet as well?
+
+Ruthie Wunderling  18:52  
+Yeah, it's a note on there, but it's also in their QuickBooks account. It has preferation of paying in and the behind the scenes view. How do you know how this person's going to pay. Technically, I leave I let them pay either way. I leave it open. And then once they pay, it's very obvious. On the QuickBooks end, it'll say, Pay with deal, and we'll say pay with credit card. And then they'll even say, here's the fee that came with it. Once they pay, the day that it
+
+Speaker 1  19:17  
+pays, send them and then you send them another invoice after to reimburse for that transaction fee. Yes, we do. And this is always on an invoice by invoice basis. Are you? Yeah, are you creating a new invoice or you're adding it to their next invoice?
+
+Ruthie Wunderling  19:31  
+No, it's a it's its own invoice because it's a processing charge invoice only for that. It has nothing to do with like a survey.
+
+Speaker 1  19:38  
+And let's say I just paid this invoice right now for $240 I sent you an ACH or use, yeah, I sent money through an ACH wire transfer. You incurred a $25 fee. Yeah, okay. And then they get sent another invoice. And let's say they pay
+
+Ruthie Wunderling  19:52  
+when I even clicked on this invoice, when I clicked on this edit button, because it'll go right to the customer, and it says, I'm letting them like I can turn this on or off with credit card payment. I understand they have the option to pay, however, but I can also restrict them with it. And so the one part is the nice, far as you can see, the different pieces,
+
+Speaker 1  20:14  
+okay, I understand that part where you know they have the option to choose, and QuickBooks understands which method they took, and QuickBooks should be able to understand what the processing fee was and what method they used to pay. So when you send them an invoice, let's say you send them a $25 reimbursement invoice for a wire transfer. Okay, let's just say, how do they pay that $25 invoice? If they are they going to pay with another wire transfer and get another 25
+
+Ruthie Wunderling  20:42  
+Yes, some families choose to do that and just keep it adds up. Some choose not to. They're so short
+
+Speaker 1  20:50  
+that makes no sense, because a wire transfer has the same fee. Every time you do it,
+
+Ruthie Wunderling  20:55  
+it's their choice for how they pay. Some of them, they don't care, because they want the points on their cards, or they want the points, or that's just how they do it, and no
+
+Speaker 2  21:02  
+points on the end wire trick, and why it's it's just credit card.
+
+Ruthie Wunderling  21:06  
+They choose it on whatever they choose, they choose, and we just let it be okay.
+
+Speaker 1  21:13  
+And how do you know, if you got charge of defeat, does QuickBooks stay? They take it out?
+
+Transcribed by https://otter.ai

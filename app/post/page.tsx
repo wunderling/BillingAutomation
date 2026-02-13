@@ -103,7 +103,7 @@ export default function PostPage() {
             <div className="glass p-8 rounded-2xl border border-white/5 text-center space-y-6 mb-8">
                 <h2 className="text-xl font-semibold">Sync to QuickBooks</h2>
                 <p className="text-gray-400 max-w-lg mx-auto">
-                    This will process {pendingSessions.length} pending session{pendingSessions.length !== 1 ? 's' : ''}, resolve their Customer in QBO, and create Delayed Charges.
+                    This will process {pendingSessions.length} pending session{pendingSessions.length !== 1 ? 's' : ''}, resolve their Client Profiles, and create QuickBooks **Invoices**.
                 </p>
 
                 <div className="flex justify-center gap-4 pt-4">

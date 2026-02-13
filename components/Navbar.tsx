@@ -43,6 +43,7 @@ export default function Navbar() {
     const links = [
         { href: "/dashboard", label: "Dashboard" },
         { href: "/sessions", label: "Sessions" },
+        { href: "/clients", label: "Clients" },
         { href: "/post", label: "Post to QBO" },
         { href: "/settings", label: "Settings" },
         { href: "/logs", label: "Logs" },

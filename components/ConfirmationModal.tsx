@@ -39,8 +39,8 @@ export function ConfirmationModal({
                     <button
                         onClick={onConfirm}
                         className={`px-4 py-2 rounded-lg font-medium transition-colors ${isDestructive
-                                ? "bg-red-500 hover:bg-red-600 text-white"
-                                : "bg-green-500 hover:bg-green-600 text-white"
+                            ? "bg-red-500 hover:bg-red-600 text-white"
+                            : "bg-green-500 hover:bg-green-600 text-white"
                             }`}
                     >
                         {confirmLabel}
