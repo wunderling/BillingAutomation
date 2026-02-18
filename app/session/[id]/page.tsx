@@ -174,8 +174,8 @@ export default function SessionDetailPage() {
                         <div>
                             <span className="text-xs text-gray-500 block uppercase">Duration</span>
                             <div className="flex items-center gap-2">
-                                <span className="text-sm text-white">{formatDuration(session.duration_minutes_normalized || 0)}</span>
-                                <span className="text-xs text-gray-500">(Raw: {session.duration_minutes_raw}m)</span>
+                                <span className="text-sm text-white">{formatDuration(session.duration_minutes_raw)}</span>
+                                <span className="text-xs text-gray-500">(Units: {session.billing_units ?? '---'})</span>
                             </div>
                         </div>
                         <div>

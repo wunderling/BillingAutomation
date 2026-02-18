@@ -4,7 +4,7 @@ Private MVP application to automate billing from Google Calendar to QuickBooks O
 
 ## Features
 - **Ingest**: Webhook listener for Google Calendar events via Zapier.
-- **Normalize**: Automatically rounds durations (45-55m -> 50m, 85-95m -> 90m).
+- **Normalize**: Prorates duration from the raw meeting length (no rounding).
 - **Review**: Admin dashboard to approve/reject sessions.
 - **Sync**: Posts approved sessions to QuickBooks Online as Delayed Charges.
 - **Secure**: Single-tenant admin access via Supabase Magic Link + Middleware.

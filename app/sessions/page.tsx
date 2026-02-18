@@ -219,10 +219,12 @@ function SessionsContent() {
                                         </td>
                                         <td className="p-4">
                                             <div className="flex flex-col">
-                                                <span className={`font-mono ${s.duration_minutes_normalized ? 'text-white' : 'text-red-400'}`}>
-                                                    {s.duration_minutes_normalized ? formatDuration(s.duration_minutes_normalized) : '---'}
+                                                <span className="font-mono text-white">
+                                                    {formatDuration(s.duration_minutes_raw)}
                                                 </span>
-                                                <span className="text-xs text-gray-500">Raw: {s.duration_minutes_raw}m</span>
+                                                <span className="text-xs text-gray-500">
+                                                    Units: {s.billing_units ?? '---'}
+                                                </span>
                                             </div>
                                         </td>
                                         <td className="p-4">
@@ -292,12 +294,10 @@ function Badge({ status }: { status: string }) {
         posted_to_qbo: "bg-purple-500/20 text-purple-400",
         needs_review_duration: "bg-yellow-500/20 text-yellow-400",
         unmatched_client: "bg-orange-500/20 text-orange-400",
-        unmatched_customer: "bg-orange-500/20 text-orange-400",
         error: "bg-red-500/20 text-red-500",
     };
 
-    let displayStatus = status.replace(/_/g, " ");
-    if (status === 'unmatched_customer') displayStatus = 'unmatched client';
+    const displayStatus = status.replace(/_/g, " ");
 
     return (
         <span className={`inline-flex px-2.5 py-1 text-xs font-medium rounded-full ${colors[status] || "bg-gray-500/20 text-gray-400"}`}>

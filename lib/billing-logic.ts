@@ -87,8 +87,9 @@ export function normalizeDuration(
     durationMinutes: number,
     settings: { qbo_item_id_50: string; qbo_item_id_90: string }
 ): { normalized: number; serviceCode: 'SESSION_50' | 'SESSION_90'; qboItemId: string } {
-    // Current logic: everything is prorated based on 50 mins.
-    // We use SESSION_50 as the base item for therapy.
+    // Computes billing units by dividing raw minutes by 50 (the base session length).
+    // e.g. 50m → 1.0, 90m → 1.8, 120m → 2.4, 30m → 0.6
+    // This value is stored as `billing_units` (numeric) in the sessions table.
     const normalized = parseFloat((durationMinutes / 50.0).toFixed(2));
 
     return {

@@ -85,7 +85,7 @@ export default function PostPage() {
                                         </td>
                                         <td className="p-4 text-white font-medium">{s.qbo_customer_name || "Unassigned"}</td>
                                         <td className="p-4 text-gray-400">
-                                            {s.duration_minutes_normalized ? formatDuration(s.duration_minutes_normalized) : '---'}
+                                            {formatDuration(s.duration_minutes_raw)}
                                         </td>
                                         <td className="p-4">
                                             <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-green-500/20 text-green-400">

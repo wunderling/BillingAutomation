@@ -78,6 +78,7 @@ export async function POST(req: NextRequest) {
             results.push({
                 sessionId: session.id,
                 client: studentName,
+                duration: session.duration_minutes_raw,
                 success: false,
                 message: "No Billing Profile found in database. Import profiles first."
             });
@@ -93,6 +94,7 @@ export async function POST(req: NextRequest) {
             results.push({
                 sessionId: session.id,
                 client: studentName,
+                duration: session.duration_minutes_raw,
                 success: false,
                 message: `Billing Profile exists but missing QBO Customer ID. Please link '${studentName}' to a QBO Customer.`
             });
@@ -115,8 +117,10 @@ export async function POST(req: NextRequest) {
             // Calculate Lines
             const qboLines = [];
             let totalAmount = 0;
+            let totalDuration = 0;
 
             for (const session of group.sessions) {
+                totalDuration += session.duration_minutes_raw;
                 const lines = calculateSessionLineItems(session, group.profile);
 
                 for (const line of lines) {
@@ -139,6 +143,7 @@ export async function POST(req: NextRequest) {
             if (dryRun) {
                 results.push({
                     client: group.profile.student_name,
+                    duration: totalDuration,
                     success: true,
                     message: `Would create Invoice for $${totalAmount.toFixed(2)} (${group.sessions.length} sessions). Emailed to: ${group.profile.billing_emails?.join(', ')}`
                 });
@@ -171,6 +176,7 @@ export async function POST(req: NextRequest) {
 
                 results.push({
                     client: group.profile.student_name,
+                    duration: totalDuration,
                     success: true,
                     message: `Created Invoice #${qboRes.Invoice.DocNumber || invoiceId} for $${totalAmount.toFixed(2)}`
                 });
@@ -180,6 +186,7 @@ export async function POST(req: NextRequest) {
             console.error(e);
             results.push({
                 client: group.profile.student_name,
+                duration: 0, // Fallback if calculation failed
                 success: false,
                 message: `Invoice Error: ${e.message}`
             });
