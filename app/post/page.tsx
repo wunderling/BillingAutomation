@@ -83,7 +83,7 @@ export default function PostPage() {
                                         <td className="p-4 text-gray-400">
                                             {new Date(s.start_time).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })}
                                         </td>
-                                        <td className="p-4 text-white font-medium">{s.qbo_customer_name || "Unassigned"}</td>
+                                        <td className="p-4 text-gray-400 font-medium">{s.qbo_customer_name || "Unassigned"}</td>
                                         <td className="p-4 text-gray-400">
                                             {formatDuration(s.duration_minutes_raw)}
                                         </td>
@@ -142,7 +142,7 @@ export default function PostPage() {
                             <tbody className="divide-y divide-white/5">
                                 {results.map((r, i) => (
                                     <tr key={i} className="hover:bg-white/5">
-                                        <td className="p-4 text-white font-medium">{r.client}</td>
+                                        <td className="p-4 text-gray-400 font-medium">{r.client}</td>
                                         <td className="p-4 text-gray-400">{formatDuration(r.duration)}</td>
                                         <td className="p-4">
                                             {r.success ? (

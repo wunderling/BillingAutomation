@@ -21,13 +21,38 @@ export async function POST(req: NextRequest) {
     if (!tokens || !tokens.access_token || !tokens.realm_id) {
         return NextResponse.json({ error: "QBO not connected" }, { status: 400 });
     }
-    const accessToken = tokens.access_token;
+    let accessToken = tokens.access_token;
     const realmId = tokens.realm_id;
+
+    // Auto-refresh token if expired
+    const isExpired = new Date(tokens.access_token_expires_at).getTime() < Date.now();
+    if (isExpired) {
+        try {
+            const result = await qbo.refreshTokens(tokens.refresh_token);
+            accessToken = result.access_token;
+            await supabase.from('qbo_tokens').update({
+                access_token: result.access_token,
+                refresh_token: result.refresh_token,
+                access_token_expires_at: new Date(Date.now() + result.expires_in * 1000).toISOString(),
+                refresh_token_expires_at: new Date(Date.now() + result.x_refresh_token_expires_in * 1000).toISOString(),
+                updated_at: new Date().toISOString()
+            }).eq('realm_id', realmId);
+            console.log("Token auto-refreshed successfully via API");
+        } catch (refreshTokenError) {
+            console.error("Token refresh failed:", refreshTokenError);
+            return NextResponse.json({ error: "QuickBooks re-authentication required" }, { status: 401 });
+        }
+    }
 
     // 2. Load Settings (for Default Item IDs)
     const { data: settings } = await supabase.from('settings').select('*').single();
     const defaultTherapyItemId = settings?.qbo_item_id_50 || '1'; // Fallback to '1' (usually Hours/Services)
     const defaultTravelItemId = settings?.qbo_item_id_90 || '2'; // Using '90' field as Travel placeholder for now
+
+    // 2.5 Load all QBO Items
+    const itemsQuery = `select * from Item maxresults 1000`;
+    const itemsResult = await qbo.makeApiCall(accessToken, realmId, `query?query=${encodeURIComponent(itemsQuery)}`);
+    const qboItems: { Name: string; Id: string }[] = itemsResult.QueryResponse?.Item || [];
 
     // 3. Load Approved Sessions
     const { data: sessions } = await supabase
@@ -124,7 +149,18 @@ export async function POST(req: NextRequest) {
                 const lines = calculateSessionLineItems(session, group.profile);
 
                 for (const line of lines) {
-                    const itemId = line.serviceCode === 'TRAVEL' ? defaultTravelItemId : defaultTherapyItemId;
+                    let itemId = line.serviceCode === 'TRAVEL' ? defaultTravelItemId : defaultTherapyItemId;
+
+                    // Attempt dynamic lookup based on rate
+                    if (line.serviceCode === 'THERAPY') {
+                        const targetName = `Educational Therapy ${line.amount}`;
+                        const matchedItem = qboItems.find(i => i.Name === targetName);
+                        if (matchedItem) itemId = matchedItem.Id;
+                    } else if (line.serviceCode === 'TRAVEL') {
+                        const targetName = `Travel ${line.amount}`;
+                        const matchedItem = qboItems.find(i => i.Name === targetName);
+                        if (matchedItem) itemId = matchedItem.Id;
+                    }
 
                     qboLines.push({
                         "Description": line.description,

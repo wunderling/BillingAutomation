@@ -31,6 +31,9 @@ export async function POST(req: NextRequest) {
             end_time,
             duration_minutes,
             source_url,
+            student_name: zap_student_name,
+            service_category,
+            confidence,
         } = body;
 
         // Validate Required
@@ -87,8 +90,8 @@ export async function POST(req: NextRequest) {
             }
         );
 
-        // 4. Parse Student Name (Event Title is Student Name)
-        const studentName = parseStudentName(title);
+        // 4. Parse Student Name (Use Zapier AI match if present, else fallback)
+        const studentName = zap_student_name || parseStudentName(title);
 
         // 5. Lookup Billing Profile (New Source of Truth)
         const { data: profile } = await supabase
@@ -137,6 +140,8 @@ export async function POST(req: NextRequest) {
             title_raw: title,
             description_raw: description,
             student_name: studentName,
+            service_category: service_category || null,
+            confidence: confidence || null,
             qbo_customer_id: qboCustomerId,
             qbo_customer_name: qboCustomerName,
             start_time: start.toISOString(),

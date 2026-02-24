@@ -9,19 +9,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 
-// TODO: Replace with real clients from Supabase in the future
-const MOCK_CLIENTS = [
-    "Alpha Corp",
-    "Beta Ltd",
-    "Gamma Inc",
-    "Delta LLC",
-    "Epsilon Co",
-    "Zeta Industries",
-    "Eta Solutions",
-    "Theta Group",
-    "Iota Ventures",
-    "Kappa Partners"
-];
+// We will fetch real profiles from the database
+
 
 export default function SessionsPage() {
     return (
@@ -42,6 +31,7 @@ function SessionsContent() {
     const [loading, setLoading] = useState(true);
     const [filterStatus, setFilterStatus] = useState(searchParams.get("status") || "all");
     const [selected, setSelected] = useState<Set<string>>(new Set());
+    const [profiles, setProfiles] = useState<{ id: string, qbo_customer_id: string, qbo_customer_name: string, student_name: string }[]>([]);
 
     // Modal State
     const [modal, setModal] = useState<{ isOpen: boolean; action: 'approve' | 'reject' | null }>({
@@ -68,6 +58,11 @@ function SessionsContent() {
 
         const { data, error } = await query;
         if (data) setSessions(data);
+
+        // Fetch billing profiles for the dropdown
+        const { data: profilesData } = await supabase.from('billing_profiles').select('id, qbo_customer_id, qbo_customer_name, student_name');
+        if (profilesData) setProfiles(profilesData as any);
+
         setLoading(false);
     }
 
@@ -112,6 +107,28 @@ function SessionsContent() {
         await fetchSessions();
         setActionLoading(null);
     };
+
+    const handleClientChange = async (sessionId: string, newCustomerId: string) => {
+        // Find the profile that matches this customer ID
+        const matchingProfile = profiles.find(p => p.qbo_customer_id === newCustomerId);
+        if (!matchingProfile) return;
+
+        await supabase.from('sessions').update({
+            qbo_customer_id: newCustomerId,
+            qbo_customer_name: matchingProfile.qbo_customer_name || matchingProfile.student_name
+        }).eq('id', sessionId);
+
+        await fetchSessions();
+    };
+
+    // Get unique customers for dropdown
+    const uniqueCustomersMap = new Map();
+    profiles.forEach(p => {
+        if (p.qbo_customer_id) {
+            uniqueCustomersMap.set(p.qbo_customer_id, p.qbo_customer_name || p.student_name);
+        }
+    });
+    const uniqueCustomers = Array.from(uniqueCustomersMap.entries()).map(([id, name]) => ({ id, name }));
 
     // Grouping Logic
     const groupedSessions = sessions.reduce((acc, session) => {
@@ -198,7 +215,9 @@ function SessionsContent() {
                                     </th>
                                     <th className="p-4">Date</th>
                                     <th className="p-4">Title / Student</th>
+                                    <th className="p-4">Category</th>
                                     <th className="p-4">Duration</th>
+                                    <th className="p-4">Confidence</th>
                                     <th className="p-4">Status</th>
                                     <th className="p-4">Client</th>
                                     <th className="p-4 text-center">Action</th>
@@ -217,6 +236,9 @@ function SessionsContent() {
                                             <div className="font-medium text-white">{s.student_name || <span className="text-yellow-500 italic">Unknown</span>}</div>
                                             <div className="text-xs text-gray-500 line-clamp-1">{s.title_raw}</div>
                                         </td>
+                                        <td className="p-4 text-sm text-gray-300">
+                                            {s.service_category || <span className="text-gray-600">--</span>}
+                                        </td>
                                         <td className="p-4">
                                             <div className="flex flex-col">
                                                 <span className="font-mono text-white">
@@ -228,18 +250,22 @@ function SessionsContent() {
                                             </div>
                                         </td>
                                         <td className="p-4">
+                                            {s.confidence ? <ConfidenceBadge confidence={s.confidence} /> : <span className="text-gray-600 text-sm">--</span>}
+                                        </td>
+                                        <td className="p-4">
                                             <Badge status={s.status} />
                                         </td>
                                         <td className="p-4">
                                             <select
                                                 className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-gray-300 w-full hover:bg-white/10 transition-colors focus:ring-2 focus:ring-purple-500/50 outline-none"
-                                                defaultValue=""
+                                                value={s.qbo_customer_id || ""}
+                                                onChange={(e) => handleClientChange(s.id, e.target.value)}
                                                 onClick={(e) => e.stopPropagation()}
                                             >
                                                 <option value="" disabled>Select Client</option>
-                                                {MOCK_CLIENTS.map(client => (
-                                                    <option key={client} value={client} className="bg-gray-900 text-gray-300">
-                                                        {client}
+                                                {uniqueCustomers.map(client => (
+                                                    <option key={client.id} value={client.id} className="bg-gray-900 text-gray-300">
+                                                        {client.name}
                                                     </option>
                                                 ))}
                                             </select>
@@ -302,6 +328,25 @@ function Badge({ status }: { status: string }) {
     return (
         <span className={`inline-flex px-2.5 py-1 text-xs font-medium rounded-full ${colors[status] || "bg-gray-500/20 text-gray-400"}`}>
             {displayStatus}
+        </span>
+    );
+}
+
+function ConfidenceBadge({ confidence }: { confidence: string }) {
+    const c = confidence.toLowerCase();
+
+    let colorClass = "bg-gray-500/20 text-gray-400"; // fallback
+    if (c === "high") {
+        colorClass = "bg-green-500/20 text-green-400";
+    } else if (c === "medium") {
+        colorClass = "bg-yellow-500/20 text-yellow-400";
+    } else if (c === "low") {
+        colorClass = "bg-red-500/20 text-red-500 font-bold border border-red-500/30";
+    }
+
+    return (
+        <span className={`inline-flex px-2.5 py-1 text-xs font-medium rounded-full capitalize ${colorClass}`}>
+            {confidence}
         </span>
     );
 }

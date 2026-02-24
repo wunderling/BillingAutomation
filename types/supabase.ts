@@ -21,6 +21,8 @@ export interface Database {
                     end_time: string
                     duration_minutes_raw: number
                     billing_units: number | null
+                    service_category: string | null
+                    confidence: string | null
                     service_code: 'SESSION_50' | 'SESSION_90' | null
                     status: 'pending_review' | 'approved' | 'rejected' | 'needs_review_duration' | 'unmatched_client' | 'posted_to_qbo' | 'error'
                     qbo_customer_id: string | null
@@ -43,6 +45,8 @@ export interface Database {
                     end_time: string
                     duration_minutes_raw: number
                     billing_units?: number | null
+                    service_category?: string | null
+                    confidence?: string | null
                     service_code?: 'SESSION_50' | 'SESSION_90' | null
                     status?: 'pending_review' | 'approved' | 'rejected' | 'needs_review_duration' | 'unmatched_client' | 'posted_to_qbo' | 'error'
                     qbo_customer_id?: string | null
