@@ -34,8 +34,9 @@ export default function SettingsPage() {
             setItemId90(s.qbo_item_id_90);
         }
 
-        const { data: t } = await supabase.from('qbo_tokens').select('access_token').single();
-        if (t && t.access_token) setQbolConnected(true);
+        // Only select realm_id to check connection status (avoiding sensitive access_token completely on the client)
+        const { data: t, error: tErr } = await supabase.from('qbo_tokens').select('realm_id').limit(1).maybeSingle();
+        if (t && t.realm_id) setQbolConnected(true);
 
         setLoading(false);
     }

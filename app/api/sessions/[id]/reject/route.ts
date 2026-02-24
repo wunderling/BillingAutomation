@@ -13,7 +13,13 @@ export async function POST(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
+    // Check current status
+    const { data: session } = await supabase.from('sessions').select('status').eq('id', id).single();
+    if (!session) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
+    if (session.status === 'posted_to_qbo') {
+        return NextResponse.json({ error: 'Cannot reject posted session' }, { status: 400 });
+    }
     const { error } = await supabase
         .from('sessions')
         .update({ status: 'rejected' })

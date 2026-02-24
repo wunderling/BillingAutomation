@@ -34,7 +34,7 @@ async function getStats() {
         supabase.from('sessions').select('*', { count: 'exact', head: true }).eq('status', 'pending_review'),
         supabase.from('sessions').select('*', { count: 'exact', head: true }).eq('status', 'approved'),
         supabase.from('sessions').select('*', { count: 'exact', head: true }).eq('status', 'needs_review_duration'),
-        supabase.from('sessions').select('*', { count: 'exact', head: true }).eq('status', 'unmatched_customer'),
+        supabase.from('sessions').select('*', { count: 'exact', head: true }).eq('status', 'unmatched_client'),
         supabase.from('sessions').select('*', { count: 'exact', head: true }).eq('status', 'posted_to_qbo'),
     ]);
 

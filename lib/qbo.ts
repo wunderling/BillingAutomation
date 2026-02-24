@@ -125,7 +125,9 @@ export class QBOClient {
     public async findCustomer(accessToken: string, realmId: string, displayName: string) {
         // Query QBO
         // select * from Customer where DisplayName = 'displayName'
-        const query = `select * from Customer where DisplayName = '${displayName.replace(/'/g, "\\'")}'`;
+        // Fix for SQL injection: escape single quotes by doubling them per QBO spec
+        const escapedName = displayName.replace(/'/g, "''");
+        const query = `select * from Customer where DisplayName = '${escapedName}'`;
         const result = await this.makeApiCall(accessToken, realmId, `query?query=${encodeURIComponent(query)}`);
         return result.QueryResponse?.Customer?.[0] || null;
     }

@@ -14,10 +14,10 @@ create table public.sessions (
   start_time timestamptz not null,
   end_time timestamptz not null,
   duration_minutes_raw int not null,
-  duration_minutes_normalized int,
+  billing_units numeric, -- prorated units based on 50-minute rate (e.g., 90m => 1.8)
   service_code text, -- "SESSION_50" | "SESSION_90"
   status text not null default 'pending_review', 
-  -- Allowed statuses: 'pending_review', 'approved', 'rejected', 'needs_review_duration', 'unmatched_customer', 'posted_to_qbo', 'error'
+  -- Allowed statuses: 'pending_review', 'approved', 'rejected', 'needs_review_duration', 'unmatched_client', 'posted_to_qbo', 'error'
   qbo_customer_id text,
   qbo_customer_name text,
   qbo_item_id text,

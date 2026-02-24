@@ -74,16 +74,22 @@ export async function middleware(request: NextRequest) {
         return response;
     }
 
+    // Helper to return 401 for API, or redirect for Pages
+    const handleUnauthorized = (reason: string) => {
+        if (path.startsWith("/api/")) {
+            return NextResponse.json({ error: reason }, { status: 401 });
+        }
+        return NextResponse.redirect(new URL("/login" + (reason ? `?error=${reason}` : ""), request.url));
+    };
+
     if (!user) {
-        return NextResponse.redirect(new URL("/login", request.url));
+        return handleUnauthorized("unauthenticated");
     }
 
     // Check Admin Email
     const adminEmail = process.env.ADMIN_EMAIL;
     if (adminEmail && user.email !== adminEmail) {
-        // If not admin, maybe show error or redirect to login with error
-        // For now, just block.
-        return NextResponse.redirect(new URL("/login?error=unauthorized", request.url));
+        return handleUnauthorized("unauthorized");
     }
 
     return response;
