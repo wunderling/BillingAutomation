@@ -114,7 +114,7 @@ export default function ClientsPage() {
                         ) : filtered.map(profile => (
                             <tr key={profile.id} className="hover:bg-white/[0.02] transition-colors group">
                                 <td className="p-4">
-                                    <div className="font-semibold text-white">{profile.student_name}</div>
+                                    <div className="font-semibold text-gray-400">{profile.student_name}</div>
                                 </td>
                                 <td className="p-4">
                                     {editingId === profile.id ? (

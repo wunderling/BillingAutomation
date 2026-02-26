@@ -43,7 +43,7 @@ async function run() {
         }
     }
 
-    const groups: any = {};
+    const groups: Record<string, { profile: BillingProfile | undefined, sessions: any[] }> = {};
     for (const session of sessions) {
         const studentName = session.student_name || parseStudentName(session.title_raw);
         const profile = profileMap.get(studentName.toLowerCase());
@@ -57,7 +57,7 @@ async function run() {
         try {
             const qboLines = [];
             for (const session of group.sessions) {
-                const lines = calculateSessionLineItems(session, group.profile);
+                const lines = calculateSessionLineItems(session, group.profile!);
                 for (const line of lines) {
                     let itemId = line.serviceCode === 'TRAVEL' ? defaultTravelItemId : defaultTherapyItemId;
                     if (line.serviceCode === 'THERAPY') {
@@ -84,7 +84,7 @@ async function run() {
             }
             const invoicePayload = {
                 "CustomerRef": { "value": customerId },
-                "BillEmail": { "Address": group.profile.billing_emails?.[0] || "" },
+                "BillEmail": { "Address": group.profile?.billing_emails?.[0] || "" },
                 "TxnDate": new Date().toISOString().split('T')[0],
                 "Line": qboLines
             };

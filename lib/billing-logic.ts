@@ -86,7 +86,7 @@ export function parseStudentName(title: string): string {
 export function normalizeDuration(
     durationMinutes: number,
     settings: { qbo_item_id_50: string; qbo_item_id_90: string }
-): { normalized: number; serviceCode: 'SESSION_50' | 'SESSION_90'; qboItemId: string } {
+): { normalized: number; serviceCode: 'THERAPY' | 'TRAVEL'; qboItemId: string } {
     // Computes billing units by dividing raw minutes by 50 (the base session length).
     // e.g. 50m → 1.0, 90m → 1.8, 120m → 2.4, 30m → 0.6
     // This value is stored as `billing_units` (numeric) in the sessions table.
@@ -94,7 +94,7 @@ export function normalizeDuration(
 
     return {
         normalized,
-        serviceCode: 'SESSION_50', // We use this as the primary service code
+        serviceCode: 'THERAPY', // We use this as the primary service code
         qboItemId: settings.qbo_item_id_50
     };
 }
