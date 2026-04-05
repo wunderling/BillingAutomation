@@ -2,232 +2,253 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { QBOClient } from "@/lib/qbo";
 import { calculateSessionLineItems, parseStudentName, BillingProfile } from "@/lib/billing-logic";
+import { createRun, updateRun } from "@/lib/logger";
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-    const searchParams = req.nextUrl.searchParams;
-    const dryRun = searchParams.get("dryRun") === "true";
+    const runId = await createRun('post-approved', 'Starting QuickBooks Invoicing for approved sessions');
+    
+    try {
+        const searchParams = req.nextUrl.searchParams;
+        const dryRun = searchParams.get("dryRun") === "true";
 
-    // Service Role Client
-    const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-    const qbo = new QBOClient();
+        if (runId) await updateRun(runId, 'running', `Running billing cycle (DryRun: ${dryRun})`);
 
-    // 1. Get QBO Tokens
-    const { data: tokens } = await supabase.from('qbo_tokens').select('*').single();
-    if (!tokens || !tokens.access_token || !tokens.realm_id) {
-        return NextResponse.json({ error: "QBO not connected" }, { status: 400 });
-    }
-    let accessToken = tokens.access_token;
-    const realmId = tokens.realm_id;
+        // Service Role Client
+        const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+        const qbo = new QBOClient();
 
-    // Auto-refresh token if expired
-    const isExpired = new Date(tokens.access_token_expires_at).getTime() < Date.now();
-    if (isExpired) {
-        try {
-            const result = await qbo.refreshTokens(tokens.refresh_token);
-            accessToken = result.access_token;
-            await supabase.from('qbo_tokens').update({
-                access_token: result.access_token,
-                refresh_token: result.refresh_token,
-                access_token_expires_at: new Date(Date.now() + result.expires_in * 1000).toISOString(),
-                refresh_token_expires_at: new Date(Date.now() + result.x_refresh_token_expires_in * 1000).toISOString(),
-                updated_at: new Date().toISOString()
-            }).eq('realm_id', realmId);
-            console.log("Token auto-refreshed successfully via API");
-        } catch (refreshTokenError) {
-            console.error("Token refresh failed:", refreshTokenError);
-            return NextResponse.json({ error: "QuickBooks re-authentication required" }, { status: 401 });
+        // 1. Get QBO Tokens
+        const { data: tokens } = await supabase.from('qbo_tokens').select('*').single();
+        if (!tokens || !tokens.access_token || !tokens.realm_id) {
+            if (runId) await updateRun(runId, 'error', 'QBO not connected: Missing tokens');
+            return NextResponse.json({ error: "QBO not connected" }, { status: 400 });
         }
-    }
+        let accessToken = tokens.access_token;
+        const realmId = tokens.realm_id;
 
-    // 2. Load Settings (for Default Item IDs)
-    const { data: settings } = await supabase.from('settings').select('*').single();
-    const defaultTherapyItemId = settings?.qbo_item_id_50 || '1'; // Fallback to '1' (usually Hours/Services)
-    const defaultTravelItemId = settings?.qbo_item_id_90 || '2'; // Using '90' field as Travel placeholder for now
-
-    // 2.5 Load all QBO Items
-    const itemsQuery = `select * from Item maxresults 1000`;
-    const itemsResult = await qbo.makeApiCall(accessToken, realmId, `query?query=${encodeURIComponent(itemsQuery)}`);
-    const qboItems: { Name: string; Id: string }[] = itemsResult.QueryResponse?.Item || [];
-
-    // 3. Load Approved Sessions
-    const { data: sessions } = await supabase
-        .from('sessions')
-        .select('*')
-        .eq('status', 'approved')
-        .is('qbo_delayed_charge_id', null) // We still use this col to track "posted" status even if it's an Invoice ID now
-        .order('start_time', { ascending: true });
-
-    if (!sessions || sessions.length === 0) {
-        return NextResponse.json({ message: "No approved sessions to post", dryRun, results: [] });
-    }
-
-    // 4. Load Billing Profiles
-    const { data: profilesData } = await supabase
-        .from('billing_profiles')
-        .select('*');
-
-    // Map Student Name -> Profile
-    const profileMap = new Map<string, BillingProfile>();
-    if (profilesData) {
-        for (const p of profilesData) {
-            // Store by lower case for looser matching
-            profileMap.set(p.student_name.toLowerCase(), p);
-        }
-    }
-
-    // 5. Group Sessions by Billing Entity (QBO Customer)
-    const results = [];
-    const groups: Record<string, {
-        customerName: string,
-        profile: BillingProfile,
-        sessions: typeof sessions
-    }> = {};
-
-    const unmatchedSessions = [];
-
-    for (const session of sessions) {
-        // Resolve Profile
-        const studentName = session.student_name || parseStudentName(session.title_raw);
-        const profile = profileMap.get(studentName.toLowerCase());
-
-        if (!profile) {
-            unmatchedSessions.push({ ...session, reason: 'No Billing Profile found' });
-            if (!dryRun) {
-                await supabase.from('sessions').update({ status: 'unmatched_client' }).eq('id', session.id);
+        // Auto-refresh token if expired
+        const isExpired = new Date(tokens.access_token_expires_at).getTime() < Date.now();
+        if (isExpired) {
+            try {
+                const result = await qbo.refreshTokens(tokens.refresh_token);
+                accessToken = result.access_token;
+                await supabase.from('qbo_tokens').update({
+                    access_token: result.access_token,
+                    refresh_token: result.refresh_token,
+                    access_token_expires_at: new Date(Date.now() + result.expires_in * 1000).toISOString(),
+                    refresh_token_expires_at: new Date(Date.now() + result.x_refresh_token_expires_in * 1000).toISOString(),
+                    updated_at: new Date().toISOString()
+                }).eq('realm_id', realmId);
+                console.log("Token auto-refreshed successfully via API");
+                if (runId) await updateRun(runId, 'running', 'QBO access token refreshed automatically');
+            } catch (refreshTokenError) {
+                console.error("Token refresh failed:", refreshTokenError);
+                if (runId) await updateRun(runId, 'error', 'QBO Token refresh failed - re-auth required');
+                return NextResponse.json({ error: "QuickBooks re-authentication required" }, { status: 401 });
             }
-            results.push({
-                sessionId: session.id,
-                client: studentName,
-                duration: session.duration_minutes_raw,
-                success: false,
-                message: "No Billing Profile found in database. Import profiles first."
-            });
-            continue;
         }
 
-        // We need a QBO Customer ID to invoice.
-        // If the profile doesn't have one, we can't invoice yet.
-        const customerId = profile.qbo_customer_id || session.qbo_customer_id; // Fallback to session if manually matched previously
+        // 2. Load Settings (for Default Item IDs)
+        const { data: settings } = await supabase.from('settings').select('*').single();
+        const defaultTherapyItemId = settings?.qbo_item_id_50 || '1';
+        const defaultTravelItemId = settings?.qbo_item_id_90 || '2';
 
-        if (!customerId) {
-            unmatchedSessions.push({ ...session, reason: 'Profile validation', profile });
-            results.push({
-                sessionId: session.id,
-                client: studentName,
-                duration: session.duration_minutes_raw,
-                success: false,
-                message: `Billing Profile exists but missing QBO Customer ID. Please link '${studentName}' to a QBO Customer.`
-            });
-            continue;
+        // 2.5 Load all QBO Items
+        const itemsQuery = `select * from Item maxresults 1000`;
+        const itemsResult = await qbo.makeApiCall(accessToken, realmId, `query?query=${encodeURIComponent(itemsQuery)}`);
+        const qboItems: { Name: string; Id: string }[] = itemsResult.QueryResponse?.Item || [];
+
+        // 3. Load Approved Sessions
+        const { data: sessions } = await supabase
+            .from('sessions')
+            .select('*')
+            .eq('status', 'approved')
+            .is('qbo_delayed_charge_id', null)
+            .order('start_time', { ascending: true });
+
+        if (!sessions || sessions.length === 0) {
+            if (runId) await updateRun(runId, 'ok', 'No approved sessions to post');
+            return NextResponse.json({ message: "No approved sessions to post", dryRun, results: [] });
         }
 
-        if (!groups[customerId]) {
-            groups[customerId] = {
-                customerName: profile.qbo_customer_name || 'Unknown',
-                profile,
-                sessions: []
-            };
+        if (runId) await updateRun(runId, 'running', `Found ${sessions.length} sessions to process`);
+
+        // 4. Load Billing Profiles
+        const { data: profilesData } = await supabase
+            .from('billing_profiles')
+            .select('*');
+
+        // Map Student Name -> Profile
+        const profileMap = new Map<string, BillingProfile>();
+        if (profilesData) {
+            for (const p of profilesData) {
+                profileMap.set(p.student_name.toLowerCase(), p);
+            }
         }
-        groups[customerId].sessions.push(session);
-    }
 
-    // 6. Generate Invoices
-    for (const [customerId, group] of Object.entries(groups)) {
-        try {
-            // Calculate Lines
-            const qboLines = [];
-            let totalAmount = 0;
-            let totalDuration = 0;
+        // 5. Group Sessions by Billing Entity (QBO Customer)
+        const results = [];
+        const groups: Record<string, {
+            customerName: string,
+            profile: BillingProfile,
+            sessions: typeof sessions
+        }> = {};
 
-            for (const session of group.sessions) {
-                totalDuration += session.duration_minutes_raw;
-                const lines = calculateSessionLineItems(session, group.profile);
+        const unmatchedSessions = [];
 
-                for (const line of lines) {
-                    let itemId = line.serviceCode === 'TRAVEL' ? defaultTravelItemId : defaultTherapyItemId;
+        for (const session of sessions) {
+            // Resolve Profile
+            const studentName = session.student_name || parseStudentName(session.title_raw);
+            const profile = profileMap.get(studentName.toLowerCase());
 
-                    // Attempt dynamic lookup based on rate
-                    if (line.serviceCode === 'THERAPY') {
-                        const targetName = `Educational Therapy ${line.amount}`;
-                        const matchedItem = qboItems.find(i => i.Name === targetName);
-                        if (matchedItem) itemId = matchedItem.Id;
-                    } else if (line.serviceCode === 'TRAVEL') {
-                        const targetName = `Travel ${line.amount}`;
-                        const matchedItem = qboItems.find(i => i.Name === targetName);
-                        if (matchedItem) itemId = matchedItem.Id;
+            if (!profile) {
+                unmatchedSessions.push({ ...session, reason: 'No Billing Profile found' });
+                if (!dryRun) {
+                    await supabase.from('sessions').update({ status: 'unmatched_client' }).eq('id', session.id);
+                }
+                results.push({
+                    sessionId: session.id,
+                    client: studentName,
+                    duration: session.duration_minutes_raw,
+                    success: false,
+                    message: "No Billing Profile found in database. Import profiles first."
+                });
+                continue;
+            }
+
+            const customerId = profile.qbo_customer_id || session.qbo_customer_id;
+
+            if (!customerId) {
+                unmatchedSessions.push({ ...session, reason: 'Profile validation', profile });
+                results.push({
+                    sessionId: session.id,
+                    client: studentName,
+                    duration: session.duration_minutes_raw,
+                    success: false,
+                    message: `Billing Profile exists but missing QBO Customer ID. Please link '${studentName}' to a QBO Customer.`
+                });
+                continue;
+            }
+
+            if (!groups[customerId]) {
+                groups[customerId] = {
+                    customerName: profile.qbo_customer_name || 'Unknown',
+                    profile,
+                    sessions: []
+                };
+            }
+            groups[customerId].sessions.push(session);
+        }
+
+        // 6. Generate Invoices
+        for (const [customerId, group] of Object.entries(groups)) {
+            try {
+                // Calculate Lines
+                const qboLines = [];
+                let totalAmount = 0;
+                let totalDuration = 0;
+
+                for (const session of group.sessions) {
+                    totalDuration += session.duration_minutes_raw;
+                    const lines = calculateSessionLineItems(session, group.profile);
+
+                    for (const line of lines) {
+                        let itemId = line.serviceCode === 'TRAVEL' ? defaultTravelItemId : defaultTherapyItemId;
+
+                        if (line.serviceCode === 'THERAPY') {
+                            const targetName = `Educational Therapy ${line.amount}`;
+                            const matchedItem = qboItems.find(i => i.Name === targetName);
+                            if (matchedItem) itemId = matchedItem.Id;
+                        } else if (line.serviceCode === 'TRAVEL') {
+                            const targetName = `Travel ${line.amount}`;
+                            const matchedItem = qboItems.find(i => i.Name === targetName);
+                            if (matchedItem) itemId = matchedItem.Id;
+                        }
+
+                        qboLines.push({
+                            "Description": line.description,
+                            "Amount": line.amount * line.quantity,
+                            "DetailType": "SalesItemLineDetail",
+                            "SalesItemLineDetail": {
+                                "ItemRef": { "value": itemId },
+                                "Qty": line.quantity,
+                                "UnitPrice": line.amount
+                            }
+                        });
+                        totalAmount += (line.amount * line.quantity);
+                    }
+                }
+
+                if (dryRun) {
+                    results.push({
+                        client: group.profile.student_name,
+                        duration: totalDuration,
+                        success: true,
+                        message: `Would create Invoice for $${totalAmount.toFixed(2)} (${group.sessions.length} sessions)`
+                    });
+                } else {
+                    const invoicePayload = {
+                        "CustomerRef": { "value": customerId },
+                        "BillEmail": { "Address": group.profile.billing_emails?.[0] || "" },
+                        "TxnDate": new Date().toISOString().split('T')[0],
+                        "Line": qboLines
+                    };
+
+                    const qboRes = await qbo.makeApiCall(accessToken, realmId, 'invoice', 'POST', invoicePayload);
+                    if (qboRes.Fault) {
+                        throw new Error(JSON.stringify(qboRes.Fault));
                     }
 
-                    qboLines.push({
-                        "Description": line.description,
-                        "Amount": line.amount * line.quantity, // QBO API: Line Amount is Total (Rate * Qty)
-                        "DetailType": "SalesItemLineDetail",
-                        "SalesItemLineDetail": {
-                            "ItemRef": { "value": itemId },
-                            "Qty": line.quantity,
-                            "UnitPrice": line.amount
-                        }
+                    const invoiceId = qboRes.Invoice.Id;
+
+                    // Update Sessions
+                    const sessionIds = group.sessions.map(s => s.id);
+                    await supabase.from('sessions').update({
+                        status: 'posted_to_qbo',
+                        qbo_customer_id: customerId,
+                        qbo_customer_name: group.profile.qbo_customer_name,
+                        qbo_delayed_charge_id: invoiceId,
+                        updated_at: new Date().toISOString()
+                    }).in('id', sessionIds);
+
+                    results.push({
+                        client: group.profile.student_name,
+                        duration: totalDuration,
+                        success: true,
+                        message: `Created Invoice #${qboRes.Invoice.DocNumber || invoiceId} for $${totalAmount.toFixed(2)}`
                     });
-                    totalAmount += (line.amount * line.quantity);
-                }
-            }
-
-            if (dryRun) {
-                results.push({
-                    client: group.profile.student_name,
-                    duration: totalDuration,
-                    success: true,
-                    message: `Would create Invoice for $${totalAmount.toFixed(2)} (${group.sessions.length} sessions). Emailed to: ${group.profile.billing_emails?.join(', ')}`
-                });
-            } else {
-                // Construct QBO Invoice
-                const invoicePayload = {
-                    "CustomerRef": { "value": customerId },
-                    "BillEmail": { "Address": group.profile.billing_emails?.[0] || "" }, // Primary email
-                    // "BillEmailCc": ... QBO API might handle CC differently or in specific fields
-                    "TxnDate": new Date().toISOString().split('T')[0],
-                    "Line": qboLines
-                };
-
-                const qboRes = await qbo.makeApiCall(accessToken, realmId, 'invoice', 'POST', invoicePayload);
-                if (qboRes.Fault) {
-                    throw new Error(JSON.stringify(qboRes.Fault));
                 }
 
-                const invoiceId = qboRes.Invoice.Id;
-
-                // Update Sessions
-                const sessionIds = group.sessions.map(s => s.id);
-                await supabase.from('sessions').update({
-                    status: 'posted_to_qbo',
-                    qbo_customer_id: customerId,
-                    qbo_customer_name: group.profile.qbo_customer_name,
-                    qbo_delayed_charge_id: invoiceId, // Storing Invoice ID here for now
-                    updated_at: new Date().toISOString()
-                }).in('id', sessionIds);
-
+            } catch (e: any) {
+                console.error(e);
                 results.push({
                     client: group.profile.student_name,
-                    duration: totalDuration,
-                    success: true,
-                    message: `Created Invoice #${qboRes.Invoice.DocNumber || invoiceId} for $${totalAmount.toFixed(2)}`
+                    duration: 0,
+                    success: false,
+                    message: `Invoice Error: ${e.message}`
                 });
             }
-
-        } catch (e: any) {
-            console.error(e);
-            results.push({
-                client: group.profile.student_name,
-                duration: 0, // Fallback if calculation failed
-                success: false,
-                message: `Invoice Error: ${e.message}`
-            });
         }
-    }
 
-    return NextResponse.json({ dryRun, results });
+        const summary = results.filter(r => r.success).length;
+        const failed = results.filter(r => !r.success).length;
+        
+        if (runId) await updateRun(runId, failed > 0 ? 'error' : 'ok', `Cycle complete: ${summary} success, ${failed} failed`, { results });
+
+        return NextResponse.json({ dryRun, results });
+
+    } catch (err: any) {
+        console.error("Unhandled API Error:", err);
+        if (runId) await updateRun(runId, 'error', `Post-Approved Error: ${err.message}`, { stack: err.stack });
+        return NextResponse.json({
+            success: false,
+            error: "Internal Server Error",
+            details: err.message
+        }, { status: 500 });
+    }
 }

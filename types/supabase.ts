@@ -104,6 +104,48 @@ export interface Database {
                 }
                 Update: Partial<Database['public']['Tables']['settings']['Insert']>
             }
+            runs: {
+                Row: {
+                    id: string
+                    type: string | null
+                    status: string | null
+                    started_at: string | null
+                    ended_at: string | null
+                    message: string | null
+                    details: Json | null
+                }
+                Insert: {
+                    id?: string
+                    type?: string | null
+                    status?: string | null
+                    started_at?: string | null
+                    ended_at?: string | null
+                    message?: string | null
+                    details?: Json | null
+                }
+                Update: Partial<Database['public']['Tables']['runs']['Insert']>
+            }
+            qbo_tokens: {
+                Row: {
+                    id: number
+                    realm_id: string | null
+                    access_token: string | null
+                    refresh_token: string | null
+                    access_token_expires_at: string | null
+                    refresh_token_expires_at: string | null
+                    updated_at: string | null
+                }
+                Insert: {
+                    id?: number
+                    realm_id?: string | null
+                    access_token?: string | null
+                    refresh_token?: string | null
+                    access_token_expires_at?: string | null
+                    refresh_token_expires_at?: string | null
+                    updated_at?: string | null
+                }
+                Update: Partial<Database['public']['Tables']['qbo_tokens']['Insert']>
+            }
         }
     }
 }

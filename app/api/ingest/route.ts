@@ -4,14 +4,18 @@ import { normalizeDuration } from "@/lib/billing-logic";
 import { Database } from "@/types/supabase";
 import { QBOClient } from "@/lib/qbo";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { createRun, updateRun } from "@/lib/logger";
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
+    const runId = await createRun('ingest', 'Starting calendar event ingestion');
+    
     try {
         const secret = req.headers.get("x-ingest-secret");
         if (secret !== process.env.INGEST_SECRET) {
             console.error("Unauthorized: Invalid secret");
+            if (runId) await updateRun(runId, 'error', 'Unauthorized: Invalid secret');
             return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
         }
 
@@ -20,6 +24,7 @@ export async function POST(req: NextRequest) {
             body = await req.json();
         } catch (e) {
             console.error("JSON Parse Error:", e);
+            if (runId) await updateRun(runId, 'error', 'Invalid JSON payload received');
             return NextResponse.json({ success: false, error: "Invalid JSON" }, { status: 400 });
         }
 
@@ -39,8 +44,11 @@ export async function POST(req: NextRequest) {
         // Validate Required
         if (!google_event_id || !title || !start_time || !end_time) {
             console.error("Missing required fields:", body);
+            if (runId) await updateRun(runId, 'error', 'Missing required fields in payload', body);
             return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 });
         }
+
+        if (runId) await updateRun(runId, 'running', `Processing: ${title}`, { title, google_event_id });
 
         const supabase = createClient<Database>(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -55,6 +63,7 @@ export async function POST(req: NextRequest) {
             .maybeSingle();
 
         if (settingsError || !settingsData) {
+            if (runId) await updateRun(runId, 'error', 'Failed to load settings from DB');
             return NextResponse.json({ success: false, error: "Database error loading settings" }, { status: 500 });
         }
         const settings = settingsData as Database['public']['Tables']['settings']['Row'];
@@ -69,6 +78,7 @@ export async function POST(req: NextRequest) {
 
         if (tokenError || !tokenData || !tokenData.access_token) {
             console.error("QBO Tokens not found or invalid");
+            if (runId) await updateRun(runId, 'error', 'QBO Tokens not found or invalid');
             return NextResponse.json({ success: false, error: "QBO not connected" }, { status: 500 });
         }
 
@@ -98,9 +108,11 @@ export async function POST(req: NextRequest) {
                     customers = await qboClient.queryAllActiveCustomers(accessToken, realmId!);
                 } catch (refreshErr) {
                     console.error("Failed to refresh QBO tokens", refreshErr);
+                    if (runId) await updateRun(runId, 'error', 'Failed to refresh QBO tokens');
                     return NextResponse.json({ success: false, error: "QBO Token Refresh Failed" }, { status: 500 });
                 }
             } else {
+                if (runId) await updateRun(runId, 'error', `QBO API Error: ${error.message}`);
                 throw error;
             }
         }
@@ -183,6 +195,7 @@ If you absolutely cannot find any customer that matches, set qbo_customer_id to 
         const end = new Date(end_time);
 
         if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+            if (runId) await updateRun(runId, 'error', 'Invalid date format for event');
             return NextResponse.json({ success: false, error: "Invalid date format" }, { status: 400 });
         }
 
@@ -221,6 +234,7 @@ If you absolutely cannot find any customer that matches, set qbo_customer_id to 
         const existing = existingData as Database['public']['Tables']['sessions']['Row'] | null;
 
         if (existing?.status === "posted_to_qbo") {
+            if (runId) await updateRun(runId, 'ok', 'Session already posted to QBO. Skipped.', { google_event_id });
             return NextResponse.json({
                 success: true,
                 message: "Session already posted to QBO. Skipped update.",
@@ -273,9 +287,12 @@ If you absolutely cannot find any customer that matches, set qbo_customer_id to 
 
         if (upsertError || !upsertedData) {
             console.error("Upsert error:", upsertError);
+            if (runId) await updateRun(runId, 'error', 'Database upsert failed', upsertError);
             return NextResponse.json({ success: false, error: "Database error" }, { status: 500 });
         }
 
+        if (runId) await updateRun(runId, 'ok', `Successfully ingested: ${title}`, { session_id: (upsertedData as any).id, matchedQboId });
+        
         return NextResponse.json({
             success: true,
             message: existing ? "Session updated" : "Session ingested successfully",
@@ -285,6 +302,7 @@ If you absolutely cannot find any customer that matches, set qbo_customer_id to 
 
     } catch (err: any) {
         console.error("Unhandled API Error:", err);
+        if (runId) await updateRun(runId, 'error', `Internal Server Error: ${err.message}`, { stack: err.stack });
         return NextResponse.json({
             success: false,
             error: "Internal Server Error",
