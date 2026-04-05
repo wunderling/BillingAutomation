@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { normalizeDuration } from "@/lib/billing-logic";
 import { Database } from "@/types/supabase";
 import { QBOClient } from "@/lib/qbo";
-import { GoogleGenerativeAI, Schema, Type } from "@google/generative-ai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export const dynamic = 'force-dynamic';
 
@@ -149,13 +149,13 @@ EXAMPLES:
 If you absolutely cannot find any customer that matches, set qbo_customer_id to "UNMATCHED".
         `;
 
-        const responseSchema: Schema = {
-            type: Type.OBJECT,
+        const responseSchema: any = {
+            type: "object",
             properties: {
-                qbo_customer_id: { type: Type.STRING },
-                service_category: { type: Type.STRING },
-                confidence: { type: Type.STRING },
-                extracted_student_name: { type: Type.STRING },
+                qbo_customer_id: { type: "string" },
+                service_category: { type: "string" },
+                confidence: { type: "string" },
+                extracted_student_name: { type: "string" },
             },
             required: ["qbo_customer_id", "service_category", "confidence", "extracted_student_name"]
         };
