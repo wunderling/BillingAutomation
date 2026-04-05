@@ -56,11 +56,11 @@ export async function POST(req: NextRequest) {
         );
 
         // 1. Load Settings
-        const { data: settingsData, error: settingsError } = await supabase
+        const { data: settingsData, error: settingsError } = await (supabase
             .from("settings")
             .select("*")
             .limit(1)
-            .maybeSingle();
+            .maybeSingle() as any);
 
         if (settingsError || !settingsData) {
             if (runId) await updateRun(runId, 'error', 'Failed to load settings from DB');
@@ -70,11 +70,11 @@ export async function POST(req: NextRequest) {
 
         // 2. Fetch Live QBO Customers
         // First get the most recent tokens
-        const { data: tokenData, error: tokenError } = await supabase
+        const { data: tokenData, error: tokenError } = await (supabase
             .from("qbo_tokens")
             .select("*")
             .limit(1)
-            .maybeSingle();
+            .maybeSingle() as any);
 
         if (tokenError || !tokenData || !tokenData.access_token) {
             console.error("QBO Tokens not found or invalid");
@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
                     accessToken = newTokens.access_token;
                     
                     // Save new tokens
-                    await supabase.from("qbo_tokens").update({
+                    await (supabase.from("qbo_tokens") as any).update({
                         access_token: newTokens.access_token,
                         refresh_token: newTokens.refresh_token,
                         // @ts-ignore - access_token_expires_at structure exists
@@ -225,8 +225,8 @@ If you absolutely cannot find any customer that matches, set qbo_customer_id to 
         }
 
         // 6. Upsert Session
-        const { data: existingData } = await supabase
-            .from("sessions")
+        const { data: existingData } = await (supabase
+            .from("sessions") as any)
             .select("*")
             .eq("google_event_id", google_event_id)
             .maybeSingle();
@@ -279,8 +279,8 @@ If you absolutely cannot find any customer that matches, set qbo_customer_id to 
             payload.status = status;
         }
 
-        const { data: upsertedData, error: upsertError } = await supabase
-            .from("sessions")
+        const { data: upsertedData, error: upsertError } = await (supabase
+            .from("sessions") as any)
             .upsert(payload, { onConflict: 'google_event_id' })
             .select()
             .single();
