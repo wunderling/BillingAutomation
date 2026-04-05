@@ -131,4 +131,11 @@ export class QBOClient {
         const result = await this.makeApiCall(accessToken, realmId, `query?query=${encodeURIComponent(query)}`);
         return result.QueryResponse?.Customer?.[0] || null;
     }
+
+    public async queryAllActiveCustomers(accessToken: string, realmId: string) {
+        // Select Id, DisplayName, Notes, FullyQualifiedName, and PrimaryEmailAddr to feed into the AI mapping prompt
+        const query = `select Id, DisplayName, Notes, FullyQualifiedName, PrimaryEmailAddr from Customer where Active = true`;
+        const result = await this.makeApiCall(accessToken, realmId, `query?query=${encodeURIComponent(query)}`);
+        return result.QueryResponse?.Customer || [];
+    }
 }
