@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { normalizeDuration, parseStudentName } from "@/lib/billing-logic";
+import { normalizeDuration } from "@/lib/billing-logic";
 import { Database } from "@/types/supabase";
+import { QBOClient } from "@/lib/qbo";
+import { GoogleGenerativeAI, Schema, Type } from "@google/generative-ai";
 
-// Force dynamic to prevent caching of the webhook endpoint
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
@@ -22,6 +23,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: false, error: "Invalid JSON" }, { status: 400 });
         }
 
+        // Zapier now only sends raw event data
         const {
             google_event_id,
             google_calendar_id,
@@ -31,9 +33,7 @@ export async function POST(req: NextRequest) {
             end_time,
             duration_minutes,
             source_url,
-            student_name: zap_student_name,
-            service_category,
-            confidence,
+            attendee_emails,
         } = body;
 
         // Validate Required
@@ -54,24 +54,135 @@ export async function POST(req: NextRequest) {
             .limit(1)
             .maybeSingle();
 
-        if (settingsError) {
-            console.error("Settings query error:", settingsError);
+        if (settingsError || !settingsData) {
             return NextResponse.json({ success: false, error: "Database error loading settings" }, { status: 500 });
         }
-
-        if (!settingsData) {
-            console.error("Settings table is empty - cannot process ingest");
-            return NextResponse.json({ success: false, error: "Settings not found. Please configure settings in the dashboard." }, { status: 500 });
-        }
-
         const settings = settingsData as Database['public']['Tables']['settings']['Row'];
 
-        // 2. Logic: Dates & Duration
+        // 2. Fetch Live QBO Customers
+        // First get the most recent tokens
+        const { data: tokenData, error: tokenError } = await supabase
+            .from("qbo_tokens")
+            .select("*")
+            .limit(1)
+            .maybeSingle();
+
+        if (tokenError || !tokenData || !tokenData.access_token) {
+            console.error("QBO Tokens not found or invalid");
+            return NextResponse.json({ success: false, error: "QBO not connected" }, { status: 500 });
+        }
+
+        let accessToken = tokenData.access_token;
+        const realmId = tokenData.realm_id;
+        const qboClient = new QBOClient();
+
+        let customers: any[] = [];
+        try {
+            customers = await qboClient.queryAllActiveCustomers(accessToken, realmId!);
+        } catch (error: any) {
+            if (error.message === 'Unauthorized') {
+                // Token expired, refresh it
+                try {
+                    const newTokens = await qboClient.refreshTokens(tokenData.refresh_token!);
+                    accessToken = newTokens.access_token;
+                    
+                    // Save new tokens
+                    await supabase.from("qbo_tokens").update({
+                        access_token: newTokens.access_token,
+                        refresh_token: newTokens.refresh_token,
+                        // @ts-ignore - access_token_expires_at structure exists
+                        updated_at: new Date().toISOString()
+                    }).eq("id", 1);
+                    
+                    // Retry QBO query
+                    customers = await qboClient.queryAllActiveCustomers(accessToken, realmId!);
+                } catch (refreshErr) {
+                    console.error("Failed to refresh QBO tokens", refreshErr);
+                    return NextResponse.json({ success: false, error: "QBO Token Refresh Failed" }, { status: 500 });
+                }
+            } else {
+                throw error;
+            }
+        }
+
+        // Format mapping for the LLM
+        const customerMappingList = customers.map(c => 
+            `- QBO ID: ${c.Id} | Parent Name: ${c.DisplayName} | Primary Email: ${c.PrimaryEmailAddr?.Address || 'None'} | Students/Notes: ${c.Notes || 'None'}`
+        ).join('\n');
+
+        // 3. Process Event with Gemini AI
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+        const prompt = `
+You are an intelligent billing categorization agent. 
+Analyze the provided Google Calendar tutoring event and match it to exactly ONE active QuickBooks Customer.
+
+QBO ACTIVE CUSTOMERS MAPPING (Source of Truth):
+${customerMappingList}
+
+EVENT TO CATEGORIZE:
+Title: ${title}
+Description: ${description || "None provided"}
+Attendee Emails: ${attendee_emails || "None provided"}
+
+MATCHING RULES:
+1. **Match to QBO ID**: 
+   - Look for the student's name in the "Students/Notes" field of the QBO customers.
+   - **Parent Match**: If the title mentions a parent (e.g., "Meeting with Sarah Wallis"), match it to the QBO Customer where "Parent Name" is "Sarah Wallis".
+   - **Email Match**: If "Attendee Emails" matches the "Primary Email" of a QBO customer, that is a High confidence match.
+   - **First Name**: If only a first name is provided (e.g., "Jeffrey"), find the best match in the Students/Notes field.
+
+2. **Determine Service Category**:
+   - "Consultation": Use for: "Consultation", "Consult", "IEP", "Meeting with [Parent]", "Parent Meeting", "Evaluation", "Testing".
+   - "Educational Therapy": Use for standard tutoring sessions or titles with just a name.
+   - "Other": Use only if completely unrelated.
+
+3. **Extract Student Name**: 
+   - Extract the core student name from the title (e.g., "Educational Therapy with Johnny" -> "Johnny").
+
+EXAMPLES:
+- Title: "Meeting with Elizabeth Fox" | Match: Look for QBO Customer "Elizabeth Fox" | Category: "Consultation"
+- Title: "Jeffrey Wong" | Match: Look for "Jeffrey Wong" in Students/Notes | Category: "Educational Therapy"
+- Title: "IEP Meeting for Tyler" | Match: Look for "Tyler" in Students/Notes | Category: "Consultation"
+
+If you absolutely cannot find any customer that matches, set qbo_customer_id to "UNMATCHED".
+        `;
+
+        const responseSchema: Schema = {
+            type: Type.OBJECT,
+            properties: {
+                qbo_customer_id: { type: Type.STRING },
+                service_category: { type: Type.STRING },
+                confidence: { type: Type.STRING },
+                extracted_student_name: { type: Type.STRING },
+            },
+            required: ["qbo_customer_id", "service_category", "confidence", "extracted_student_name"]
+        };
+
+        const result = await model.generateContent({
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: {
+                responseMimeType: "application/json",
+                responseSchema: responseSchema
+            }
+        });
+
+        const aiResponse = JSON.parse(result.response.text());
+        const matchedQboId = aiResponse.qbo_customer_id === "UNMATCHED" ? null : aiResponse.qbo_customer_id;
+        const serviceCat = aiResponse.service_category;
+        const conf = aiResponse.confidence;
+        const extractedName = aiResponse.extracted_student_name;
+
+        // Lookup the matched customer name for saving
+        const matchedCustomer = customers.find(c => c.Id === matchedQboId);
+        const qboCustomerName = matchedCustomer ? matchedCustomer.DisplayName : null;
+
+        // 4. Logic: Dates & Duration
         const start = new Date(start_time);
         const end = new Date(end_time);
 
         if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-            console.error("Invalid dates:", start_time, end_time);
             return NextResponse.json({ success: false, error: "Invalid date format" }, { status: 400 });
         }
 
@@ -81,7 +192,7 @@ export async function POST(req: NextRequest) {
             duration = Math.round(diffMs / 1000 / 60);
         }
 
-        // 3. Normalize
+        // 5. Normalize Duration
         const { normalized, serviceCode, qboItemId } = normalizeDuration(
             duration,
             {
@@ -90,33 +201,17 @@ export async function POST(req: NextRequest) {
             }
         );
 
-        // 4. Parse Student Name (Use Zapier AI match if present, else fallback)
-        const studentName = zap_student_name || parseStudentName(title);
-
-        // 5. Lookup Billing Profile (New Source of Truth)
-        const { data: profile } = await supabase
-            .from("billing_profiles")
-            .select("*")
-            .eq("student_name", studentName)
-            .maybeSingle();
-
+        // Determine save status
         let status: Database['public']['Tables']['sessions']['Row']['status'] = 'pending_review';
-        let qboCustomerId: string | null = null;
-        let qboCustomerName: string | null = null;
-
-        if (profile) {
-            qboCustomerId = (profile as any).qbo_customer_id;
-            qboCustomerName = (profile as any).qbo_customer_name;
-
-            // Note: normalized status check is still valid if we want to flag unusual durations
-            if (!normalized) {
-                status = 'needs_review_duration';
-            }
-        } else {
+        if (!matchedQboId) {
             status = 'unmatched_client';
+        } else if (!normalized) {
+            status = 'needs_review_duration';
+        } else if (conf === "Low") {
+            status = 'needs_review_duration'; // or create a needs_review_match status if desired
         }
 
-        // 6. Upsert
+        // 6. Upsert Session
         const { data: existingData } = await supabase
             .from("sessions")
             .select("*")
@@ -124,7 +219,6 @@ export async function POST(req: NextRequest) {
             .maybeSingle();
 
         const existing = existingData as Database['public']['Tables']['sessions']['Row'] | null;
-
 
         if (existing?.status === "posted_to_qbo") {
             return NextResponse.json({
@@ -139,10 +233,10 @@ export async function POST(req: NextRequest) {
             google_calendar_id,
             title_raw: title,
             description_raw: description,
-            student_name: studentName,
-            service_category: service_category || null,
-            confidence: confidence || null,
-            qbo_customer_id: qboCustomerId,
+            student_name: extractedName || title, // Improved: we use the AI-extracted name piece
+            service_category: serviceCat,
+            confidence: conf,
+            qbo_customer_id: matchedQboId,
             qbo_customer_name: qboCustomerName,
             start_time: start.toISOString(),
             end_time: end.toISOString(),
@@ -151,28 +245,20 @@ export async function POST(req: NextRequest) {
             service_code: serviceCode,
             qbo_item_id: qboItemId,
             updated_at: new Date().toISOString(),
-            source: 'zapier'
+            source: 'zapier_with_backend_ai'
         };
 
         if (source_url) {
             payload.notes = payload.notes ? `${payload.notes}\n${source_url}` : source_url;
         }
 
-        // Preserve existing status if not posted and logic dictates a change, 
-        // BUT we want to update if it was previously unmatched and now matched, or vice versa.
-        // For simplicity, we overwrite status unless it was manually approved/posted.
         if (existing) {
             if ((existing.status as string) !== 'posted_to_qbo' && (existing.status as string) !== 'approved') {
                 payload.status = status;
             } else {
-                // If approved/posted, don't revert status, but DO update other fields? 
-                // Usually if approved, we stop touching it. 
-                // Use safe approach: only update status if it's currently in a flexible state.
                 delete payload.status;
             }
-
-            // If we found a match now, enforce it
-            if (profile && existing.status === 'unmatched_client') {
+            if (matchedQboId && existing.status === 'unmatched_client') {
                 payload.status = status;
             }
         } else {
@@ -185,17 +271,15 @@ export async function POST(req: NextRequest) {
             .select()
             .single();
 
-        const upserted = upsertedData as Database['public']['Tables']['sessions']['Row'] | null;
-
-        if (upsertError || !upserted) {
+        if (upsertError || !upsertedData) {
             console.error("Upsert error:", upsertError);
-            return NextResponse.json({ success: false, error: "Database error: " + (upsertError?.message || "Unknown") }, { status: 500 });
+            return NextResponse.json({ success: false, error: "Database error" }, { status: 500 });
         }
 
         return NextResponse.json({
             success: true,
             message: existing ? "Session updated" : "Session ingested successfully",
-            session_id: upserted.id,
+            session_id: upsertedData.id,
             status: payload.status || existing?.status
         });
 
